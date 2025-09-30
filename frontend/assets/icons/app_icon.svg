@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#1a1a1a" stroke="#333" stroke-width="2"/>
+  
+  <!-- Main H-dumbbell icon -->
+  <g filter="url(#glow)" fill="#ff6b35">
+    <!-- Left weight -->
+    <rect x="120" y="200" width="40" height="112" rx="20" ry="20"/>
+    
+    <!-- Center grip (H horizontal bar) -->
+    <rect x="200" y="240" width="112" height="32" rx="16" ry="16"/>
+    
+    <!-- Right weight -->
+    <rect x="352" y="200" width="40" height="112" rx="20" ry="20"/>
+    
+    <!-- H vertical bars -->
+    <rect x="220" y="180" width="32" height="152" rx="16" ry="16"/>
+    <rect x="260" y="180" width="32" height="152" rx="16" ry="16"/>
+  </g>
+  
+  <!-- Inner highlight -->
+  <g fill="#ff8c5a" opacity="0.6">
+    <rect x="130" y="210" width="20" height="92" rx="10" ry="10"/>
+    <rect x="210" y="250" width="92" height="12" rx="6" ry="6"/>
+    <rect x="362" y="210" width="20" height="92" rx="10" ry="10"/>
+    <rect x="230" y="190" width="12" height="132" rx="6" ry="6"/>
+    <rect x="270" y="190" width="12" height="132" rx="6" ry="6"/>
+  </g>
+</svg>

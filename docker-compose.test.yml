@@ -1,0 +1,185 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 测试数据库
+  postgres-test:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: fittracker_test
+      POSTGRES_USER: fittracker
+      POSTGRES_PASSWORD: fittracker123
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./backend-go/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fittracker -d fittracker_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 测试缓存
+  redis-test:
+    image: redis:7
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_test_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Go 后端测试服务
+  backend-go-test:
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile.test
+    environment:
+      ENVIRONMENT: test
+      PORT: 8080
+      LOG_LEVEL: debug
+      DATABASE_URL: postgres://fittracker:fittracker123@postgres-test:5432/fittracker_test?sslmode=disable
+      REDIS_URL: redis://redis-test:6379/0
+      JWT_SECRET: test-secret-key-change-in-production
+      JWT_EXPIRATION: 24
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    volumes:
+      - ./backend-go:/app
+      - /app/vendor
+    command: >
+      sh -c "
+        go mod download &&
+        go test ./... -v -race -coverprofile=coverage.out &&
+        go test ./... -v -race -tags=integration -coverprofile=integration_coverage.out &&
+        go tool cover -html=coverage.out -o coverage.html &&
+        go tool cover -html=integration_coverage.out -o integration_coverage.html &&
+        go test -bench=. -benchmem -run=^$ ./... &&
+        go test -race -count=100 ./...
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Flutter 前端测试服务
+  frontend-test:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.test
+    environment:
+      FLUTTER_ROOT: /opt/flutter
+    volumes:
+      - ./frontend:/app
+      - /app/.dart_tool
+      - /app/build
+    command: >
+      sh -c "
+        flutter pub get &&
+        flutter pub run build_runner build --delete-conflicting-outputs &&
+        flutter test --coverage &&
+        flutter test integration_test/ --coverage &&
+        flutter analyze
+      "
+
+  # 测试数据生成器
+  test-data-generator:
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile.test
+    environment:
+      DATABASE_URL: postgres://fittracker:fittracker123@postgres-test:5432/fittracker_test?sslmode=disable
+      REDIS_URL: redis://redis-test:6379/0
+      JWT_SECRET: test-secret-key-change-in-production
+      JWT_EXPIRATION: 24
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    volumes:
+      - ./backend-go:/app
+    command: >
+      sh -c "
+        go run test_data_generator.go
+      "
+
+  # 性能测试服务
+  performance-test:
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile.test
+    environment:
+      DATABASE_URL: postgres://fittracker:fittracker123@postgres-test:5432/fittracker_test?sslmode=disable
+      REDIS_URL: redis://redis-test:6379/0
+      JWT_SECRET: test-secret-key-change-in-production
+      JWT_EXPIRATION: 24
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    volumes:
+      - ./backend-go:/app
+    command: >
+      sh -c "
+        go test -bench=. -benchmem -run=^$ ./... &&
+        go test -race -count=1000 ./...
+      "
+
+  # 安全扫描服务
+  security-scan:
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./backend-go:/app
+    command: >
+      sh -c "
+        go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest &&
+        gosec ./...
+      "
+
+  # 代码质量检查服务
+  code-quality:
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./backend-go:/app
+    command: >
+      sh -c "
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest &&
+        golangci-lint run &&
+        go fmt ./... &&
+        git diff --exit-code
+      "
+
+  # 测试报告生成器
+  test-reporter:
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile.test
+    volumes:
+      - ./backend-go:/app
+      - ./test-reports:/reports
+    command: >
+      sh -c "
+        mkdir -p /reports &&
+        cp coverage.html /reports/go-coverage.html &&
+        cp integration_coverage.html /reports/go-integration-coverage.html &&
+        echo 'Test reports generated successfully' > /reports/summary.txt
+      "
+
+volumes:
+  postgres_test_data:
+  redis_test_data:

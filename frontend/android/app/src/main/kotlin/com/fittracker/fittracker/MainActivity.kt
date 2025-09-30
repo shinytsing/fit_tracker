@@ -1,0 +1,5 @@
+package com.fittracker.fittracker
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()

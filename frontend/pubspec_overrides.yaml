@@ -1,0 +1,4 @@
+dependency_overrides:
+  # 使用国内镜像源
+  flutter:
+    sdk: flutter

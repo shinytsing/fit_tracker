@@ -1,0 +1,61 @@
+# FitTracker 测试配置文件
+
+# 服务器配置
+server:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "test"
+  read_timeout: 30s
+  write_timeout: 30s
+
+# 数据库配置
+database:
+  host: "postgres-test"
+  port: 5432
+  user: "test_user"
+  password: "test_password"
+  name: "fittracker_test"
+  ssl_mode: "disable"
+  max_open_conns: 10
+  max_idle_conns: 5
+  conn_max_lifetime: 300s
+
+# Redis配置
+redis:
+  host: "redis-test"
+  port: 6379
+  password: "test_password"
+  db: 0
+  pool_size: 10
+  min_idle_conns: 5
+  max_conn_age: 300s
+
+# JWT配置
+jwt:
+  secret: "test_jwt_secret_key_for_testing_only"
+  expire_hours: 1
+  issuer: "fittracker-test"
+
+# 日志配置
+logging:
+  level: "debug"
+  format: "json"
+  output: "stdout"
+
+# AI服务配置
+ai:
+  deepseek:
+    api_key: "test_deepseek_key"
+    api_url: "https://api.deepseek.com/v1/chat/completions"
+    timeout: 30s
+  tencent:
+    api_key: "test_tencent_key"
+    api_url: "https://hunyuan.tencentcloudapi.com"
+    timeout: 30s
+
+# 测试配置
+testing:
+  mock_ai_responses: true
+  skip_external_calls: true
+  test_data_path: "./testdata"
+  coverage_threshold: 85

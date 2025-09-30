@@ -1,0 +1,207 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: fittracker-postgres
+    environment:
+      POSTGRES_DB: fittracker
+      POSTGRES_USER: fittracker
+      POSTGRES_PASSWORD: fittracker123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend-go/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - fittracker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fittracker -d fittracker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: fittracker-redis
+    command: redis-server --appendonly yes --requirepass fittracker123
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - fittracker-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Go 后端服务
+  backend:
+    build:
+      context: ./backend-go
+      dockerfile: Dockerfile
+    container_name: fittracker-backend
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - SERVER_MODE=release
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=fittracker
+      - DB_PASSWORD=fittracker123
+      - DB_NAME=fittracker
+      - DB_SSL_MODE=disable
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=fittracker123
+      - REDIS_DB=0
+      - JWT_SECRET=your_jwt_secret_key_change_in_production
+      - JWT_EXPIRE_HOURS=24
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_API_URL=https://api.deepseek.com/v1/chat/completions
+      - TENCENT_HUNYUAN_API_KEY=${TENCENT_HUNYUAN_API_KEY}
+      - TENCENT_HUNYUAN_API_URL=https://hunyuan.tencentcloudapi.com
+    ports:
+      - "8080:8080"
+    networks:
+      - fittracker-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - ./backend-go/logs:/app/logs
+
+  # Nginx 反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: fittracker-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./frontend/build/web:/usr/share/nginx/html
+    networks:
+      - fittracker-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Flutter Web 前端 (可选，用于Web版本)
+  frontend-web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.web
+    container_name: fittracker-frontend-web
+    ports:
+      - "3000:80"
+    networks:
+      - fittracker-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # 数据库管理工具 (可选)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: fittracker-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@fittracker.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    networks:
+      - fittracker-network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  # Redis 管理工具 (可选)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: fittracker-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379:fittracker123
+    ports:
+      - "8081:8081"
+    networks:
+      - fittracker-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # 监控服务 (可选)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: fittracker-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - fittracker-network
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: fittracker-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - fittracker-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  fittracker-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
