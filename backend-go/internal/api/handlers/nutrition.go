@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"fittracker/backend/internal/domain/models"
+	"fittracker/internal/domain/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -120,7 +120,7 @@ func (h *Handlers) GetDailyIntake(c *gin.Context) {
 	userID, _ := c.Get("user_id")
 	dateStr := c.DefaultQuery("date", time.Now().Format("2006-01-02"))
 
-	date, err := time.Parse("2006-01-02", dateStr)
+	_, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "日期格式错误",

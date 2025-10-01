@@ -1,4 +1,4 @@
-package integration
+package handlers
 
 import (
 	"bytes"
@@ -8,11 +8,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"fittracker/backend/internal/api/handlers"
-	"fittracker/backend/internal/api/routes"
-	"fittracker/backend/internal/config"
-	"fittracker/backend/internal/domain/models"
-	"fittracker/backend/internal/infrastructure/cache"
+	"fittracker/internal/api/handlers"
+	"fittracker/internal/api/routes"
+	"fittracker/internal/config"
+	"fittracker/internal/domain/models"
+	"fittracker/internal/infrastructure/cache"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/suite"

@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"fittracker/backend/internal/domain/models"
+	"fittracker/internal/domain/models"
 
 	"gorm.io/gorm"
 )

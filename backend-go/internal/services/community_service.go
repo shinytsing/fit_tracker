@@ -1,0 +1,210 @@
+package services
+
+import (
+	"fmt"
+	"time"
+
+	"fittracker/internal/models"
+
+	"gorm.io/gorm"
+)
+
+// CommunityService 社区服务
+type CommunityService struct {
+	db *gorm.DB
+}
+
+// NewCommunityService 创建社区服务
+func NewCommunityService(db *gorm.DB) *CommunityService {
+	return &CommunityService{
+		db: db,
+	}
+}
+
+// GetFollowingPosts 获取关注流动态
+func (s *CommunityService) GetFollowingPosts(userID string, page, limit int, lastPostID string) ([]*models.Post, bool, error) {
+	offset := (page - 1) * limit
+
+	var posts []*models.Post
+	err := s.db.Preload("User").Preload("Likes").Preload("Comments").
+		Where("is_public = ?", true).
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit + 1).
+		Find(&posts).Error
+
+	if err != nil {
+		return nil, false, err
+	}
+
+	hasMore := len(posts) > limit
+	if hasMore {
+		posts = posts[:limit]
+	}
+
+	return posts, hasMore, nil
+}
+
+// GetRecommendPosts 获取推荐动态
+func (s *CommunityService) GetRecommendPosts(userID string, page, limit int, lastPostID string) ([]*models.Post, bool, error) {
+	offset := (page - 1) * limit
+
+	var posts []*models.Post
+	err := s.db.Preload("User").Preload("Likes").Preload("Comments").
+		Where("is_public = ?", true).
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit + 1).
+		Find(&posts).Error
+
+	if err != nil {
+		return nil, false, err
+	}
+
+	hasMore := len(posts) > limit
+	if hasMore {
+		posts = posts[:limit]
+	}
+
+	return posts, hasMore, nil
+}
+
+// CreatePost 创建动态
+func (s *CommunityService) CreatePost(post *models.Post) (*models.Post, error) {
+	// 生成ID
+	post.ID = fmt.Sprintf("%d", time.Now().Unix())
+	post.CreatedAt = time.Now()
+	post.UpdatedAt = time.Now()
+
+	// 插入动态
+	if err := s.db.Create(post).Error; err != nil {
+		return nil, err
+	}
+
+	// 预加载关联数据
+	if err := s.db.Preload("User").Preload("Likes").Preload("Comments").First(post, post.ID).Error; err != nil {
+		return nil, err
+	}
+
+	return post, nil
+}
+
+// GetPost 获取动态详情
+func (s *CommunityService) GetPost(postID string) (*models.Post, error) {
+	var post models.Post
+	err := s.db.Preload("User").Preload("Likes").Preload("Comments").First(&post, postID).Error
+	if err != nil {
+		return nil, err
+	}
+	return &post, nil
+}
+
+// LikePost 点赞动态
+func (s *CommunityService) LikePost(postID, userID string) error {
+	like := &models.PostLike{
+		UserID: userID,
+		PostID: postID,
+	}
+	
+	return s.db.Create(like).Error
+}
+
+// UnlikePost 取消点赞
+func (s *CommunityService) UnlikePost(postID, userID string) error {
+	return s.db.Where("post_id = ? AND user_id = ?", postID, userID).Delete(&models.PostLike{}).Error
+}
+
+// CreateComment 创建评论
+func (s *CommunityService) CreateComment(postID, userID, content string) (*models.Comment, error) {
+	comment := &models.Comment{
+		UserID:  userID,
+		PostID:  postID,
+		Content: content,
+	}
+	
+	if err := s.db.Create(comment).Error; err != nil {
+		return nil, err
+	}
+	
+	return comment, nil
+}
+
+// GetComments 获取评论列表
+func (s *CommunityService) GetComments(postID string, page, limit int) ([]*models.Comment, bool, error) {
+	offset := (page - 1) * limit
+
+	var comments []*models.Comment
+	err := s.db.Where("post_id = ?", postID).
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit + 1).
+		Find(&comments).Error
+
+	if err != nil {
+		return nil, false, err
+	}
+
+	hasMore := len(comments) > limit
+	if hasMore {
+		comments = comments[:limit]
+	}
+
+	return comments, hasMore, nil
+}
+
+// GetTrendingTopics 获取热门话题
+func (s *CommunityService) GetTrendingTopics(limit int) ([]string, error) {
+	// 模拟热门话题
+	topics := []string{
+		"健身打卡",
+		"减脂计划",
+		"增肌训练",
+		"瑜伽练习",
+		"跑步训练",
+		"力量训练",
+		"有氧运动",
+		"健康饮食",
+	}
+
+	if limit > len(topics) {
+		limit = len(topics)
+	}
+
+	return topics[:limit], nil
+}
+
+// FollowUser 关注用户
+func (s *CommunityService) FollowUser(userID, targetUserID string) error {
+	// 这里应该实现关注逻辑
+	return nil
+}
+
+// UnfollowUser 取消关注
+func (s *CommunityService) UnfollowUser(userID, targetUserID string) error {
+	// 这里应该实现取消关注逻辑
+	return nil
+}
+
+// SearchPosts 搜索动态
+func (s *CommunityService) SearchPosts(query string, page, limit int) ([]*models.Post, bool, error) {
+	offset := (page - 1) * limit
+
+	var posts []*models.Post
+	err := s.db.Preload("User").Preload("Likes").Preload("Comments").
+		Where("content LIKE ? AND is_public = ?", "%"+query+"%", true).
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit + 1).
+		Find(&posts).Error
+
+	if err != nil {
+		return nil, false, err
+	}
+
+	hasMore := len(posts) > limit
+	if hasMore {
+		posts = posts[:limit]
+	}
+
+	return posts, hasMore, nil
+}

@@ -9,10 +9,9 @@ import 'package:fittracker/core/models/models.dart';
 import 'package:fittracker/core/services/api_services.dart';
 import 'package:fittracker/core/providers/providers.dart';
 import 'package:fittracker/features/auth/pages/login_page.dart';
-import 'package:fittracker/features/test/pages/test_api_page.dart';
 
 // 生成 Mock 类
-@GenerateMocks([AuthApiService, UserApiService, WorkoutApiService, BMIApiService, CommunityApiService, CheckinApiService, NutritionApiService])
+@GenerateMocks([AuthApiService, WorkoutApiService, CommunityApiService, CheckinApiService, NutritionApiService])
 import 'widget_test.mocks.dart';
 
 void main() {
@@ -68,15 +67,26 @@ void main() {
       final mockAuthApiService = MockAuthApiService();
       
       // 设置 Mock 响应
-      when(mockAuthApiService.login(any)).thenAnswer(
+      when(mockAuthApiService.login(email: anyNamed('email'), password: anyNamed('password'))).thenAnswer(
         (_) async => AuthResponse(
-          message: 'Login successful',
           token: 'test-token',
           user: User(
-            id: 1,
+            id: '1',
             username: 'testuser',
             email: 'test@example.com',
+            firstName: 'Test',
+            lastName: 'User',
+            isVerified: false,
+            followersCount: 0,
+            followingCount: 0,
+            totalWorkouts: 0,
+            totalCheckins: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
           ),
+          expiresAt: DateTime.now().add(Duration(hours: 24)),
         ),
       );
       
@@ -100,17 +110,17 @@ void main() {
       await tester.pump();
       
       // 验证 API 调用
-      verify(mockAuthApiService.login({
-        'email': 'test@example.com',
-        'password': 'password123',
-      })).called(1);
+      verify(mockAuthApiService.login(
+        email: 'test@example.com',
+        password: 'password123',
+      )).called(1);
     });
     
     testWidgets('LoginPage 应该处理登录失败', (WidgetTester tester) async {
       final mockAuthApiService = MockAuthApiService();
       
       // 设置 Mock 异常
-      when(mockAuthApiService.login(any)).thenThrow(
+      when(mockAuthApiService.login(email: anyNamed('email'), password: anyNamed('password'))).thenThrow(
         DioException(
           requestOptions: RequestOptions(path: '/auth/login'),
           response: Response(
@@ -141,172 +151,7 @@ void main() {
       await tester.pump();
       
       // 验证错误处理
-      verify(mockAuthApiService.login(any)).called(1);
-    });
-  });
-  
-  group('TestApiPage Widget Tests', () {
-    testWidgets('TestApiPage 应该显示测试按钮', (WidgetTester tester) async {
-      final mockUserApiService = MockUserApiService();
-      
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            userApiServiceProvider.overrideWithValue(mockUserApiService),
-          ],
-          child: MaterialApp(
-            home: TestApiPage(),
-          ),
-        ),
-      );
-      
-      // 验证测试按钮存在
-      expect(find.text('Fetch User Profile'), findsOneWidget);
-      expect(find.text('No data yet'), findsOneWidget);
-    });
-    
-    testWidgets('TestApiPage 应该处理 API 调用成功', (WidgetTester tester) async {
-      final mockUserApiService = MockUserApiService();
-      
-      // 设置 Mock 响应
-      when(mockUserApiService.getProfile()).thenAnswer(
-        (_) async => User(
-          id: 1,
-          username: 'testuser',
-          email: 'test@example.com',
-        ),
-      );
-      
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            userApiServiceProvider.overrideWithValue(mockUserApiService),
-          ],
-          child: MaterialApp(
-            home: TestApiPage(),
-          ),
-        ),
-      );
-      
-      // 点击测试按钮
-      await tester.tap(find.text('Fetch User Profile'));
-      await tester.pump();
-      
-      // 验证 API 调用
-      verify(mockUserApiService.getProfile()).called(1);
-      
-      // 验证响应显示
-      expect(find.text('Profile: testuser, test@example.com'), findsOneWidget);
-    });
-    
-    testWidgets('TestApiPage 应该处理 API 调用失败', (WidgetTester tester) async {
-      final mockUserApiService = MockUserApiService();
-      
-      // 设置 Mock 异常
-      when(mockUserApiService.getProfile()).thenThrow(
-        DioException(
-          requestOptions: RequestOptions(path: '/users/profile'),
-          response: Response(
-            requestOptions: RequestOptions(path: '/users/profile'),
-            statusCode: 401,
-            data: {'error': 'Unauthorized'},
-          ),
-        ),
-      );
-      
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            userApiServiceProvider.overrideWithValue(mockUserApiService),
-          ],
-          child: MaterialApp(
-            home: TestApiPage(),
-          ),
-        ),
-      );
-      
-      // 点击测试按钮
-      await tester.tap(find.text('Fetch User Profile'));
-      await tester.pump();
-      
-      // 验证 API 调用
-      verify(mockUserApiService.getProfile()).called(1);
-      
-      // 验证错误显示
-      expect(find.textContaining('Error fetching profile'), findsOneWidget);
-    });
-  });
-  
-  group('BMI Calculation Tests', () {
-    testWidgets('BMI 计算应该显示正确的结果', (WidgetTester tester) async {
-      final mockBMIApiService = MockBMIApiService();
-      
-      // 设置 Mock 响应
-      when(mockBMIApiService.calculateBMI(any)).thenAnswer(
-        (_) async => BMIResponse(
-          bmi: 22.86,
-          category: '正常',
-          idealWeight: IdealWeight(min: 60.0, max: 80.0),
-          bodyFat: 15.0,
-          bmr: 1800.0,
-          tdee: 2790.0,
-        ),
-      );
-      
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            bmiApiServiceProvider.overrideWithValue(mockBMIApiService),
-          ],
-          child: MaterialApp(
-            home: Scaffold(
-              body: Column(
-                children: [
-                  TextFormField(
-                    decoration: InputDecoration(labelText: '身高 (cm)'),
-                    onChanged: (value) {},
-                  ),
-                  TextFormField(
-                    decoration: InputDecoration(labelText: '体重 (kg)'),
-                    onChanged: (value) {},
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      // 模拟 BMI 计算
-                      final response = await mockBMIApiService.calculateBMI({
-                        'height': 175.0,
-                        'weight': 70.0,
-                        'age': 25,
-                        'gender': 'male',
-                      });
-                      // 验证结果
-                      expect(response.bmi, 22.86);
-                      expect(response.category, '正常');
-                    },
-                    child: Text('计算 BMI'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-      
-      // 输入身高和体重
-      await tester.enterText(find.byType(TextFormField).first, '175');
-      await tester.enterText(find.byType(TextFormField).last, '70');
-      
-      // 点击计算按钮
-      await tester.tap(find.text('计算 BMI'));
-      await tester.pump();
-      
-      // 验证 API 调用
-      verify(mockBMIApiService.calculateBMI({
-        'height': 175.0,
-        'weight': 70.0,
-        'age': 25,
-        'gender': 'male',
-      })).called(1);
+      verify(mockAuthApiService.login(email: anyNamed('email'), password: anyNamed('password'))).called(1);
     });
   });
   
@@ -315,22 +160,24 @@ void main() {
       final mockWorkoutApiService = MockWorkoutApiService();
       
       // 设置 Mock 响应
-      when(mockWorkoutApiService.getWorkouts(any)).thenAnswer(
-        (_) async => [
-          Workout(
-            id: 1,
-            userId: 1,
-            name: '胸肌训练',
-            type: '力量训练',
-            duration: 60,
-            calories: 300,
-            difficulty: '中级',
-            notes: '训练效果很好',
-            rating: 4.5,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-        ],
+      when(mockWorkoutApiService.getWorkouts(page: anyNamed('page'), limit: anyNamed('limit'), type: anyNamed('type'))).thenAnswer(
+        (_) async => ApiResponse<List<Workout>>(
+          data: [
+            Workout(
+              id: '1',
+              userId: '1',
+              name: '胸肌训练',
+              type: '力量训练',
+              duration: 60,
+              calories: 300,
+              difficulty: '中级',
+              notes: '训练效果很好',
+              rating: 4.5,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          ],
+        ),
       );
       
       await tester.pumpWidget(
@@ -344,14 +191,14 @@ void main() {
                 children: [
                   ElevatedButton(
                     onPressed: () async {
-                      final workouts = await mockWorkoutApiService.getWorkouts({
-                        'page': 1,
-                        'limit': 10,
-                      });
+                      final response = await mockWorkoutApiService.getWorkouts(
+                        page: 1,
+                        limit: 10,
+                      );
                       // 验证结果
-                      expect(workouts.length, 1);
-                      expect(workouts.first.name, '胸肌训练');
-                      expect(workouts.first.type, '力量训练');
+                      expect(response.data!.length, 1);
+                      expect(response.data!.first.name, '胸肌训练');
+                      expect(response.data!.first.type, '力量训练');
                     },
                     child: Text('获取训练记录'),
                   ),
@@ -367,10 +214,10 @@ void main() {
       await tester.pump();
       
       // 验证 API 调用
-      verify(mockWorkoutApiService.getWorkouts({
-        'page': 1,
-        'limit': 10,
-      })).called(1);
+      verify(mockWorkoutApiService.getWorkouts(
+        page: 1,
+        limit: 10,
+      )).called(1);
     });
   });
   
@@ -379,21 +226,26 @@ void main() {
       final mockCommunityApiService = MockCommunityApiService();
       
       // 设置 Mock 响应
-      when(mockCommunityApiService.getPosts(any)).thenAnswer(
-        (_) async => [
-          Post(
-            id: 1,
-            userId: 1,
-            content: '今天完成了胸肌训练，感觉很好！',
-            type: '训练',
-            isPublic: true,
-            likesCount: 5,
-            commentsCount: 2,
-            sharesCount: 1,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          ),
-        ],
+      when(mockCommunityApiService.getPosts(page: anyNamed('page'), limit: anyNamed('limit'), type: anyNamed('type'))).thenAnswer(
+        (_) async => ApiResponse<List<Post>>(
+          data: [
+            Post(
+              id: '1',
+              userId: '1',
+              content: '今天完成了胸肌训练，感觉很好！',
+              type: '训练',
+              isPublic: true,
+              isFeatured: false,
+              viewCount: 0,
+              shareCount: 0,
+              likesCount: 5,
+              commentsCount: 2,
+              sharesCount: 1,
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          ],
+        ),
       );
       
       await tester.pumpWidget(
@@ -407,15 +259,15 @@ void main() {
                 children: [
                   ElevatedButton(
                     onPressed: () async {
-                      final posts = await mockCommunityApiService.getPosts({
-                        'page': 1,
-                        'limit': 10,
-                      });
+                      final response = await mockCommunityApiService.getPosts(
+                        page: 1,
+                        limit: 10,
+                      );
                       // 验证结果
-                      expect(posts.length, 1);
-                      expect(posts.first.content, '今天完成了胸肌训练，感觉很好！');
-                      expect(posts.first.type, '训练');
-                      expect(posts.first.isPublic, true);
+                      expect(response.data!.length, 1);
+                      expect(response.data!.first.content, '今天完成了胸肌训练，感觉很好！');
+                      expect(response.data!.first.type, '训练');
+                      expect(response.data!.first.isPublic, true);
                     },
                     child: Text('获取动态'),
                   ),
@@ -431,10 +283,10 @@ void main() {
       await tester.pump();
       
       // 验证 API 调用
-      verify(mockCommunityApiService.getPosts({
-        'page': 1,
-        'limit': 10,
-      })).called(1);
+      verify(mockCommunityApiService.getPosts(
+        page: 1,
+        limit: 10,
+      )).called(1);
     });
   });
   
@@ -443,11 +295,11 @@ void main() {
       final mockCheckinApiService = MockCheckinApiService();
       
       // 设置 Mock 响应
-      when(mockCheckinApiService.getCheckins(any)).thenAnswer(
+      when(mockCheckinApiService.getCheckins(page: anyNamed('page'), limit: anyNamed('limit'))).thenAnswer(
         (_) async => [
           Checkin(
-            id: 1,
-            userId: 1,
+            id: '1',
+            userId: '1',
             date: DateTime.now(),
             type: '训练',
             notes: '完成了今天的训练',
@@ -471,10 +323,10 @@ void main() {
                 children: [
                   ElevatedButton(
                     onPressed: () async {
-                      final checkins = await mockCheckinApiService.getCheckins({
-                        'page': 1,
-                        'limit': 10,
-                      });
+                      final checkins = await mockCheckinApiService.getCheckins(
+                        page: 1,
+                        limit: 10,
+                      );
                       // 验证结果
                       expect(checkins.length, 1);
                       expect(checkins.first.type, '训练');
@@ -497,10 +349,10 @@ void main() {
       await tester.pump();
       
       // 验证 API 调用
-      verify(mockCheckinApiService.getCheckins({
-        'page': 1,
-        'limit': 10,
-      })).called(1);
+      verify(mockCheckinApiService.getCheckins(
+        page: 1,
+        limit: 10,
+      )).called(1);
     });
   });
   
@@ -509,18 +361,22 @@ void main() {
       final mockNutritionApiService = MockNutritionApiService();
       
       // 设置 Mock 响应
-      when(mockNutritionApiService.calculateNutrition(any)).thenAnswer(
-        (_) async => NutritionResponse(
-          foodName: '鸡胸肉',
-          quantity: 100.0,
-          calories: 165.0,
-          protein: 31.0,
-          carbs: 0.0,
-          fat: 3.6,
-          fiber: 0.0,
-          sugar: 0.0,
-          sodium: 74.0,
-        ),
+      when(mockNutritionApiService.calculateNutrition(
+        foodName: anyNamed('foodName'),
+        quantity: anyNamed('quantity'),
+        unit: anyNamed('unit'),
+      )).thenAnswer(
+        (_) async => {
+          'food_name': '鸡胸肉',
+          'quantity': 100.0,
+          'calories': 165.0,
+          'protein': 31.0,
+          'carbs': 0.0,
+          'fat': 3.6,
+          'fiber': 0.0,
+          'sugar': 0.0,
+          'sodium': 74.0,
+        },
       );
       
       await tester.pumpWidget(
@@ -542,18 +398,18 @@ void main() {
                   ),
                   ElevatedButton(
                     onPressed: () async {
-                      final response = await mockNutritionApiService.calculateNutrition({
-                        'food_name': '鸡胸肉',
-                        'quantity': 100.0,
-                        'unit': 'g',
-                      });
+                      final response = await mockNutritionApiService.calculateNutrition(
+                        foodName: '鸡胸肉',
+                        quantity: 100.0,
+                        unit: 'g',
+                      );
                       // 验证结果
-                      expect(response.foodName, '鸡胸肉');
-                      expect(response.quantity, 100.0);
-                      expect(response.calories, 165.0);
-                      expect(response.protein, 31.0);
-                      expect(response.carbs, 0.0);
-                      expect(response.fat, 3.6);
+                      expect(response['food_name'], '鸡胸肉');
+                      expect(response['quantity'], 100.0);
+                      expect(response['calories'], 165.0);
+                      expect(response['protein'], 31.0);
+                      expect(response['carbs'], 0.0);
+                      expect(response['fat'], 3.6);
                     },
                     child: Text('计算营养'),
                   ),
@@ -573,11 +429,11 @@ void main() {
       await tester.pump();
       
       // 验证 API 调用
-      verify(mockNutritionApiService.calculateNutrition({
-        'food_name': '鸡胸肉',
-        'quantity': 100.0,
-        'unit': 'g',
-      })).called(1);
+      verify(mockNutritionApiService.calculateNutrition(
+        foodName: '鸡胸肉',
+        quantity: 100.0,
+        unit: 'g',
+      )).called(1);
     });
   });
 }

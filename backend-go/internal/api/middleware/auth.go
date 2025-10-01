@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"fittracker/backend/internal/config"
+	"fittracker/internal/config"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -145,7 +145,7 @@ func OptionalAuth() gin.HandlerFunc {
 func RateLimit(action string, limit int) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 获取客户端IP
-		clientIP := c.ClientIP()
+		_ = c.ClientIP()
 
 		// 这里需要注入缓存服务，暂时跳过限流检查
 		// 在实际使用中，应该通过依赖注入获取缓存服务

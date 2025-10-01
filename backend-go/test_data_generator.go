@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"fittracker/backend/internal/domain/models"
+	"fittracker/internal/domain/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"

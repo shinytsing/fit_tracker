@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"fittracker/backend/internal/domain/models"
+	"fittracker/internal/domain/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

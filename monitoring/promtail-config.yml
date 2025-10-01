@@ -1,0 +1,37 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # FitTracker 应用日志
+  - job_name: fittracker-app
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: fittracker-app
+          __path__: /var/log/app/*.log
+
+  # 系统日志
+  - job_name: system-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: system-logs
+          __path__: /var/log/host/*.log
+
+  # Docker 容器日志
+  - job_name: docker-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker-logs
+          __path__: /var/log/host/docker/*.log

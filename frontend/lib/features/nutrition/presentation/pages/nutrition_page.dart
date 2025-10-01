@@ -376,7 +376,7 @@ class _NutritionPageState extends ConsumerState<NutritionPage> {
           const SizedBox(height: 4),
           LinearProgressIndicator(
             value: percentage / 100,
-            backgroundColor: color.withValues(alpha: 0.2),
+            backgroundColor: color.withOpacity(0.2),
             valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ],
@@ -388,7 +388,7 @@ class _NutritionPageState extends ConsumerState<NutritionPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(

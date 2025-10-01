@@ -1,322 +1,653 @@
-# FitTracker - 部署指南
+# FitTracker 部署指南
 
-## 🚀 快速开始
+## 部署方式
 
-### 环境要求
-- Python 3.11+
-- Flutter 3.16+
-- Docker & Docker Compose
-- PostgreSQL 15+
-- Redis 7.0+
+### 1. Docker 部署（推荐）
 
-### 一键启动
+#### 生产环境部署
 ```bash
+# 1. 克隆项目
+git clone <repository-url>
+cd fittracker
+
+# 2. 配置环境变量
+cd backend-go
+cp env.example .env
+# 编辑 .env 文件，配置生产环境参数
+
+# 3. 启动服务
+docker-compose up -d
+
+# 4. 查看服务状态
+docker-compose ps
+docker-compose logs -f
+```
+
+#### 测试环境部署
+```bash
+# 启动测试环境
+docker-compose -f docker-compose.test.yml up -d
+
+# 查看测试环境状态
+docker-compose -f docker-compose.test.yml ps
+```
+
+### 2. 手动部署
+
+#### 服务器要求
+- Ubuntu 20.04+ / CentOS 7+
+- 内存: 最低 2GB，推荐 4GB+
+- 存储: 最低 20GB，推荐 50GB+
+- CPU: 最低 2 核
+
+#### 安装依赖
+```bash
+# 更新系统
+sudo apt update && sudo apt upgrade -y
+
+# 安装基础工具
+sudo apt install -y curl wget git build-essential
+
+# 安装 PostgreSQL
+sudo apt install -y postgresql postgresql-contrib
+
+# 安装 Redis
+sudo apt install -y redis-server
+
+# 安装 Nginx
+sudo apt install -y nginx
+
+# 安装 Go
+wget https://go.dev/dl/go1.21.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+source ~/.bashrc
+
+# 安装 Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+
+# 安装 Docker Compose
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+#### 配置数据库
+```bash
+# 切换到 postgres 用户
+sudo -u postgres psql
+
+# 创建数据库和用户
+CREATE DATABASE fittracker;
+CREATE USER fittracker WITH PASSWORD 'fittracker123';
+GRANT ALL PRIVILEGES ON DATABASE fittracker TO fittracker;
+\q
+
+# 初始化数据库
+sudo -u postgres psql -d fittracker -f /path/to/backend-go/scripts/init.sql
+```
+
+#### 配置 Redis
+```bash
+# 编辑 Redis 配置
+sudo nano /etc/redis/redis.conf
+
+# 设置密码（可选）
+requirepass your_redis_password
+
+# 重启 Redis
+sudo systemctl restart redis-server
+sudo systemctl enable redis-server
+```
+
+#### 配置 Nginx
+```bash
+# 创建 Nginx 配置
+sudo nano /etc/nginx/sites-available/fittracker
+
+# 配置内容
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location /api/ {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        root /var/www/fittracker/frontend/build/web;
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# 启用站点
+sudo ln -s /etc/nginx/sites-available/fittracker /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+#### 部署应用
+```bash
+# 创建应用目录
+sudo mkdir -p /opt/fittracker
+sudo chown $USER:$USER /opt/fittracker
+
 # 克隆项目
-git clone https://github.com/shinytsing/fit-tracker.git
-cd fit-tracker
+cd /opt/fittracker
+git clone <repository-url> .
 
-# 运行启动脚本
-chmod +x scripts/setup.sh
-./scripts/setup.sh
+# 构建后端
+cd backend-go
+go mod download
+go build -o fittracker-backend cmd/server/main.go
+
+# 创建 systemd 服务
+sudo nano /etc/systemd/system/fittracker-backend.service
+
+# 服务配置
+[Unit]
+Description=FitTracker Backend Service
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=fittracker
+WorkingDirectory=/opt/fittracker/backend-go
+ExecStart=/opt/fittracker/backend-go/fittracker-backend
+Restart=always
+RestartSec=5
+Environment=ENVIRONMENT=production
+Environment=DB_HOST=localhost
+Environment=DB_PORT=5432
+Environment=DB_USER=fittracker
+Environment=DB_PASSWORD=fittracker123
+Environment=DB_NAME=fittracker
+Environment=REDIS_HOST=localhost
+Environment=REDIS_PORT=6379
+Environment=JWT_SECRET=your-production-secret-key
+
+[Install]
+WantedBy=multi-user.target
+
+# 启动服务
+sudo systemctl daemon-reload
+sudo systemctl enable fittracker-backend
+sudo systemctl start fittracker-backend
+sudo systemctl status fittracker-backend
 ```
 
-## 📱 功能特性
+### 3. Kubernetes 部署
 
-### 核心功能
-- ✅ **健身中心**: 训练计划、动作指导、进度跟踪
-- ✅ **BMI计算器**: 身体指标计算、健康评估
-- ✅ **营养计算器**: 卡路里计算、营养分析、饮食建议
-- ✅ **签到日历**: 习惯养成、打卡记录、连续天数
-- ✅ **运动追踪**: 运动记录、消耗统计、目标设定
-- ✅ **训练计划**: 个性化训练方案、强度调节
-- ✅ **健康监测**: 心率监测、睡眠分析、压力评估
-- ✅ **社区互动**: 健身分享、经验交流、挑战赛
-
-### 技术特性
-- 🔥 **热血设计**: 橙色+红色主色调，积极向上的UI设计
-- 📱 **跨平台**: Flutter 支持 iOS/Android
-- ⚡ **高性能**: FastAPI + PostgreSQL + Redis
-- 🔒 **安全**: JWT认证 + 数据加密
-- 📊 **监控**: Sentry + OpenTelemetry
-- 🚀 **CI/CD**: GitHub Actions 自动化部署
-
-## 🏗️ 项目结构
-
-```
-fittraker/
-├── backend/                 # FastAPI 后端
-│   ├── app/
-│   │   ├── api/            # API 路由
-│   │   ├── core/           # 核心配置
-│   │   ├── models/         # 数据模型
-│   │   ├── schemas/        # Pydantic 模式
-│   │   ├── services/       # 业务逻辑
-│   │   └── utils/          # 工具函数
-│   ├── tests/              # 测试文件
-│   ├── requirements.txt    # Python 依赖
-│   └── Dockerfile          # Docker 配置
-├── frontend/               # Flutter 前端
-│   ├── lib/
-│   │   ├── core/          # 核心功能
-│   │   ├── features/      # 功能模块
-│   │   ├── shared/        # 共享组件
-│   │   └── main.dart      # 应用入口
-│   ├── pubspec.yaml       # Flutter 依赖
-│   └── Dockerfile         # Docker 配置
-├── infra/                  # 基础设施
-│   ├── docker-compose.yml # Docker Compose
-│   └── nginx.conf         # Nginx 配置
-├── docs/                   # 项目文档
-├── scripts/                # 工具脚本
-└── .github/workflows/      # CI/CD 配置
+#### 创建命名空间
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fittracker
 ```
 
-## 🛠️ 开发指南
+#### 部署 PostgreSQL
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: fittracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        env:
+        - name: POSTGRES_DB
+          value: fittracker
+        - name: POSTGRES_USER
+          value: fittracker
+        - name: POSTGRES_PASSWORD
+          value: fittracker123
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: fittracker
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+```
 
-### 后端开发
+#### 部署 Redis
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: fittracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: fittracker
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+```
+
+#### 部署后端服务
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fittracker-backend
+  namespace: fittracker
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fittracker-backend
+  template:
+    metadata:
+      labels:
+        app: fittracker-backend
+    spec:
+      containers:
+      - name: fittracker-backend
+        image: fittracker/backend:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENVIRONMENT
+          value: production
+        - name: DB_HOST
+          value: postgres
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: fittracker
+        - name: DB_PASSWORD
+          value: fittracker123
+        - name: DB_NAME
+          value: fittracker
+        - name: REDIS_HOST
+          value: redis
+        - name: REDIS_PORT
+          value: "6379"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: fittracker-secrets
+              key: jwt-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fittracker-backend
+  namespace: fittracker
+spec:
+  selector:
+    app: fittracker-backend
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: LoadBalancer
+```
+
+## 环境变量配置
+
+### 生产环境变量
 ```bash
-cd backend
+# 应用配置
+ENVIRONMENT=production
+PORT=8080
+HOST=0.0.0.0
 
-# 安装依赖
-pip install -r requirements.txt
-
-# 启动开发服务器
-python main.py
-
-# 运行测试
-pytest tests/ -v
-
-# 代码格式化
-black .
-isort .
-
-# 代码检查
-flake8 .
-mypy .
-```
-
-### 前端开发
-```bash
-cd frontend
-
-# 安装依赖
-flutter pub get
-
-# 启动开发服务器
-flutter run
-
-# 运行测试
-flutter test
-
-# 代码分析
-flutter analyze
-```
-
-## 🐳 Docker 部署
-
-### 开发环境
-```bash
-# 启动所有服务
-docker-compose -f infra/docker-compose.yml up -d
-
-# 查看日志
-docker-compose -f infra/docker-compose.yml logs -f
-
-# 停止服务
-docker-compose -f infra/docker-compose.yml down
-```
-
-### 生产环境
-```bash
-# 构建生产镜像
-docker-compose -f infra/docker-compose.prod.yml build
-
-# 启动生产服务
-docker-compose -f infra/docker-compose.prod.yml up -d
-```
-
-## 🌐 部署平台
-
-### Railway 部署
-```bash
-# 安装 Railway CLI
-npm install -g @railway/cli
-
-# 登录 Railway
-railway login
-
-# 部署项目
-railway up
-```
-
-### Vercel 部署
-```bash
-# 安装 Vercel CLI
-npm install -g vercel
-
-# 部署前端
-cd frontend
-vercel --prod
-
-# 部署后端
-cd backend
-vercel --prod
-```
-
-### Fly.io 部署
-```bash
-# 安装 Fly CLI
-curl -L https://fly.io/install.sh | sh
-
-# 部署应用
-fly deploy
-```
-
-## 📊 监控与日志
-
-### 应用监控
-- **错误监控**: Sentry 实时错误追踪
-- **性能监控**: APM 性能分析
-- **业务监控**: 关键指标监控
-
-### 日志管理
-- **结构化日志**: JSON 格式日志
-- **日志聚合**: ELK Stack
-- **日志分析**: 实时分析 + 告警
-
-## 🔧 环境配置
-
-### 后端环境变量
-```bash
 # 数据库配置
-DATABASE_URL=postgresql://user:pass@localhost:5432/fittracker
-REDIS_URL=redis://localhost:6379
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=fittracker
+DB_PASSWORD=fittracker123
+DB_NAME=fittracker
+DB_SSLMODE=require
 
-# 安全配置
-SECRET_KEY=your-secret-key
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+# Redis配置
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=your_redis_password
+REDIS_DB=0
 
-# 文件存储
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
-AWS_S3_BUCKET=your-bucket
+# JWT配置
+JWT_SECRET=your-production-secret-key-$(openssl rand -hex 32)
+JWT_EXPIRES_IN=24
 
-# 监控配置
-SENTRY_DSN=your-sentry-dsn
+# AI服务配置
+TENCENT_SECRET_ID=your_tencent_secret_id
+TENCENT_SECRET_KEY=your_tencent_secret_key
+DEEPSEEK_API_KEY=your_deepseek_api_key
+GROQ_API_KEY=your_groq_api_key
 ```
 
-### 前端环境变量
+## SSL 证书配置
+
+### Let's Encrypt 证书
 ```bash
-# API 配置
-API_BASE_URL=https://api.fittracker.com
+# 安装 Certbot
+sudo apt install -y certbot python3-certbot-nginx
 
-# 监控配置
-SENTRY_DSN=your-sentry-dsn
+# 获取证书
+sudo certbot --nginx -d your-domain.com
+
+# 自动续期
+sudo crontab -e
+# 添加以下行
+0 12 * * * /usr/bin/certbot renew --quiet
 ```
 
-## 🧪 测试
-
-### 单元测试
+### 自签名证书
 ```bash
-# 后端测试
-cd backend
-pytest tests/ -v --cov=app
+# 生成私钥
+openssl genrsa -out fittracker.key 2048
 
-# 前端测试
-cd frontend
-flutter test
+# 生成证书签名请求
+openssl req -new -key fittracker.key -out fittracker.csr
+
+# 生成自签名证书
+openssl x509 -req -days 365 -in fittracker.csr -signkey fittracker.key -out fittracker.crt
+
+# 配置 Nginx SSL
+sudo nano /etc/nginx/sites-available/fittracker
+
+# 添加 SSL 配置
+server {
+    listen 443 ssl;
+    server_name your-domain.com;
+    
+    ssl_certificate /path/to/fittracker.crt;
+    ssl_certificate_key /path/to/fittracker.key;
+    
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    
+    location /api/ {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# HTTP 重定向到 HTTPS
+server {
+    listen 80;
+    server_name your-domain.com;
+    return 301 https://$server_name$request_uri;
+}
 ```
 
-### 集成测试
+## 监控和日志
+
+### 系统监控
 ```bash
-# E2E 测试
-cd frontend
-flutter drive --target=test_driver/app.dart
+# 安装监控工具
+sudo apt install -y htop iotop nethogs
+
+# 查看系统资源
+htop
+iotop
+nethogs
+
+# 查看服务状态
+systemctl status fittracker-backend
+systemctl status postgresql
+systemctl status redis-server
+systemctl status nginx
 ```
 
-## 📈 性能优化
-
-### 数据库优化
-- 索引优化
-- 查询优化
-- 连接池配置
-- 读写分离
-
-### 缓存策略
-- Redis 缓存
-- CDN 缓存
-- 应用缓存
-- 缓存更新策略
-
-### 前端优化
-- 图片优化
-- 代码分割
-- 资源压缩
-- 离线缓存
-
-## 🔒 安全配置
-
-### 认证与授权
-- JWT Token 机制
-- 密码安全哈希
-- API 限流
-- CORS 配置
-
-### 数据安全
-- 数据加密
-- SQL 注入防护
-- XSS 防护
-- CSRF 防护
-
-## 📱 移动端部署
-
-### iOS 部署
+### 应用日志
 ```bash
-# 构建 iOS 应用
-cd frontend
-flutter build ios --release
+# 查看应用日志
+journalctl -u fittracker-backend -f
 
-# 上传到 App Store Connect
-flutter build ipa
+# 查看 Nginx 日志
+sudo tail -f /var/log/nginx/access.log
+sudo tail -f /var/log/nginx/error.log
+
+# 查看数据库日志
+sudo tail -f /var/log/postgresql/postgresql-15-main.log
+
+# 查看 Redis 日志
+sudo tail -f /var/log/redis/redis-server.log
 ```
 
-### Android 部署
+### 性能监控
 ```bash
-# 构建 Android 应用
-cd frontend
-flutter build apk --release
+# 安装 Prometheus 和 Grafana
+docker run -d --name prometheus -p 9090:9090 prom/prometheus
+docker run -d --name grafana -p 3000:3000 grafana/grafana
 
-# 构建 AAB 包
-flutter build appbundle --release
+# 配置监控指标
+# 在应用中添加 Prometheus 指标端点
 ```
 
-## 🚀 持续集成
+## 备份和恢复
 
-### GitHub Actions
-- 自动测试
-- 代码质量检查
-- 安全扫描
-- 自动部署
+### 数据库备份
+```bash
+# 创建备份脚本
+sudo nano /opt/scripts/backup-db.sh
 
-### 部署流程
-1. 代码提交到 main 分支
-2. 自动运行测试
-3. 代码质量检查
-4. 安全扫描
-5. 构建镜像
-6. 部署到生产环境
+#!/bin/bash
+BACKUP_DIR="/opt/backups"
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="$BACKUP_DIR/fittracker_$DATE.sql"
 
-## 📞 支持与反馈
+mkdir -p $BACKUP_DIR
+pg_dump -h localhost -U fittracker fittracker > $BACKUP_FILE
+gzip $BACKUP_FILE
 
-- 📧 邮箱: contact@fittracker.com
-- 🐛 问题反馈: https://github.com/shinytsing/fit-tracker/issues
-- 📖 文档: https://docs.fittracker.com
-- 💬 社区: https://community.fittracker.com
+# 删除7天前的备份
+find $BACKUP_DIR -name "fittracker_*.sql.gz" -mtime +7 -delete
 
-## 📄 许可证
+# 设置定时任务
+sudo crontab -e
+# 添加以下行
+0 2 * * * /opt/scripts/backup-db.sh
+```
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+### 应用备份
+```bash
+# 创建应用备份脚本
+sudo nano /opt/scripts/backup-app.sh
+
+#!/bin/bash
+BACKUP_DIR="/opt/backups"
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="$BACKUP_DIR/fittracker-app_$DATE.tar.gz"
+
+mkdir -p $BACKUP_DIR
+tar -czf $BACKUP_FILE /opt/fittracker
+
+# 删除30天前的备份
+find $BACKUP_DIR -name "fittracker-app_*.tar.gz" -mtime +30 -delete
+```
+
+## 故障排除
+
+### 常见问题
+
+1. **服务启动失败**
+```bash
+# 检查服务状态
+systemctl status fittracker-backend
+
+# 查看详细日志
+journalctl -u fittracker-backend -n 50
+
+# 检查端口占用
+netstat -tlnp | grep :8080
+```
+
+2. **数据库连接失败**
+```bash
+# 检查 PostgreSQL 状态
+systemctl status postgresql
+
+# 测试数据库连接
+psql -h localhost -U fittracker -d fittracker
+
+# 检查数据库日志
+sudo tail -f /var/log/postgresql/postgresql-15-main.log
+```
+
+3. **Redis 连接失败**
+```bash
+# 检查 Redis 状态
+systemctl status redis-server
+
+# 测试 Redis 连接
+redis-cli ping
+
+# 检查 Redis 日志
+sudo tail -f /var/log/redis/redis-server.log
+```
+
+4. **Nginx 配置错误**
+```bash
+# 测试 Nginx 配置
+sudo nginx -t
+
+# 重新加载配置
+sudo systemctl reload nginx
+
+# 查看 Nginx 错误日志
+sudo tail -f /var/log/nginx/error.log
+```
+
+### 性能优化
+
+1. **数据库优化**
+```sql
+-- 创建索引
+CREATE INDEX CONCURRENTLY idx_posts_created_at ON posts(created_at);
+CREATE INDEX CONCURRENTLY idx_users_username ON users(username);
+
+-- 分析表统计信息
+ANALYZE posts;
+ANALYZE users;
+```
+
+2. **Redis 优化**
+```bash
+# 编辑 Redis 配置
+sudo nano /etc/redis/redis.conf
+
+# 优化内存使用
+maxmemory 512mb
+maxmemory-policy allkeys-lru
+
+# 启用持久化
+save 900 1
+save 300 10
+save 60 10000
+```
+
+3. **Nginx 优化**
+```bash
+# 编辑 Nginx 配置
+sudo nano /etc/nginx/nginx.conf
+
+# 优化工作进程
+worker_processes auto;
+worker_connections 1024;
+
+# 启用 Gzip 压缩
+gzip on;
+gzip_vary on;
+gzip_min_length 1024;
+gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+```
+
+## 安全加固
+
+### 防火墙配置
+```bash
+# 安装 UFW
+sudo apt install -y ufw
+
+# 配置防火墙规则
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow ssh
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+```
+
+### 数据库安全
+```sql
+-- 创建只读用户
+CREATE USER fittracker_readonly WITH PASSWORD 'readonly_password';
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO fittracker_readonly;
+
+-- 限制连接数
+ALTER USER fittracker CONNECTION LIMIT 50;
+```
+
+### 应用安全
+```bash
+# 设置文件权限
+sudo chown -R fittracker:fittracker /opt/fittracker
+sudo chmod -R 755 /opt/fittracker
+
+# 限制服务用户权限
+sudo useradd -r -s /bin/false fittracker
+```
 
 ---
 
-**FitTracker** - 让健身更有趣，让坚持更简单！ 💪🔥
+*最后更新: 2024年12月29日*

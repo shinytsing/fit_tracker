@@ -5,57 +5,82 @@ import (
 	"strconv"
 )
 
-// Config 应用配置
 type Config struct {
 	Environment string
-	Port        string
-	LogLevel    string
-
-	// 数据库配置
-	DatabaseURL string
-
-	// Redis配置
-	RedisURL string
-
-	// JWT配置
-	JWTSecret     string
-	JWTExpiration int
-
-	// AI服务配置
-	DeepSeekAPIKey   string
-	TencentSecretID  string
-	TencentSecretKey string
-	AIMLAPIKey       string
-
-	// 文件上传配置
-	UploadPath  string
-	MaxFileSize int64
+	Database    DatabaseConfig
+	Redis       RedisConfig
+	JWT         JWTConfig
+	AI          AIConfig
+	Server      ServerConfig
 }
 
-// Load 加载配置
+type DatabaseConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	DBName   string
+	SSLMode  string
+}
+
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+	DB       int
+}
+
+type JWTConfig struct {
+	SecretKey string
+	ExpiresIn int // hours
+}
+
+type AIConfig struct {
+	TencentSecretID  string
+	TencentSecretKey string
+	DeepSeekAPIKey   string
+	GroqAPIKey       string
+}
+
+type ServerConfig struct {
+	Port string
+	Host string
+}
+
 func Load() *Config {
 	return &Config{
 		Environment: getEnv("ENVIRONMENT", "development"),
-		Port:        getEnv("PORT", "8080"),
-		LogLevel:    getEnv("LOG_LEVEL", "info"),
-
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/fittracker?sslmode=disable"),
-		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379/0"),
-
-		JWTSecret:     getEnv("JWT_SECRET", "your-secret-key"),
-		JWTExpiration: getEnvAsInt("JWT_EXPIRATION", 24*7), // 7天
-
-		DeepSeekAPIKey:   getEnv("DEEPSEEK_API_KEY", ""),
-		TencentSecretID:  getEnv("TENCENT_SECRET_ID", ""),
-		TencentSecretKey: getEnv("TENCENT_SECRET_KEY", ""),
-		AIMLAPIKey:       getEnv("AIMLAPI_API_KEY", ""),
-
-		UploadPath:  getEnv("UPLOAD_PATH", "./uploads"),
-		MaxFileSize: getEnvAsInt64("MAX_FILE_SIZE", 10*1024*1024), // 10MB
+		Database: DatabaseConfig{
+			Host:     getEnv("DB_HOST", "localhost"),
+			Port:     getEnv("DB_PORT", "5432"),
+			User:     getEnv("DB_USER", "fittracker"),
+			Password: getEnv("DB_PASSWORD", "fittracker123"),
+			DBName:   getEnv("DB_NAME", "fittracker"),
+			SSLMode:  getEnv("DB_SSLMODE", "disable"),
+		},
+		Redis: RedisConfig{
+			Host:     getEnv("REDIS_HOST", "localhost"),
+			Port:     getEnv("REDIS_PORT", "6379"),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       getEnvAsInt("REDIS_DB", 0),
+		},
+		JWT: JWTConfig{
+			SecretKey: getEnv("JWT_SECRET", "fittracker-secret-key-2024"),
+			ExpiresIn: getEnvAsInt("JWT_EXPIRES_IN", 24),
+		},
+		AI: AIConfig{
+			TencentSecretID:  getEnv("TENCENT_SECRET_ID", ""),
+			TencentSecretKey: getEnv("TENCENT_SECRET_KEY", ""),
+			DeepSeekAPIKey:   getEnv("DEEPSEEK_API_KEY", ""),
+			GroqAPIKey:       getEnv("GROQ_API_KEY", ""),
+		},
+		Server: ServerConfig{
+			Port: getEnv("PORT", "8080"),
+			Host: getEnv("HOST", "0.0.0.0"),
+		},
 	}
 }
 
-// getEnv 获取环境变量，如果不存在则返回默认值
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -63,20 +88,9 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-// getEnvAsInt 获取环境变量并转换为int
 func getEnvAsInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.Atoi(value); err == nil {
-			return intValue
-		}
-	}
-	return defaultValue
-}
-
-// getEnvAsInt64 获取环境变量并转换为int64
-func getEnvAsInt64(key string, defaultValue int64) int64 {
-	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.ParseInt(value, 10, 64); err == nil {
 			return intValue
 		}
 	}

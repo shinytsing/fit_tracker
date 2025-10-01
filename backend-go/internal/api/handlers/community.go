@@ -4,9 +4,10 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
-	"fittracker/backend/internal/domain/models"
+	"fittracker/internal/domain/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -51,7 +52,7 @@ func (h *Handlers) GetPosts(c *gin.Context) {
 	offset := (page - 1) * limit
 
 	var posts []models.Post
-	query := h.DB.Where("is_public = ?", true).Preload("User")
+	query := h.DB.Where("is_public = ?", true).Preload("User").Preload("Likes").Preload("Comments")
 
 	if postType != "" {
 		query = query.Where("type = ?", postType)
@@ -93,20 +94,16 @@ func (h *Handlers) CreatePost(c *gin.Context) {
 		return
 	}
 
-	// 将图片数组转换为JSON字符串
-	var imagesJSON string
+	// 处理图片数组
+	var imagesStr string
 	if len(req.Images) > 0 {
-		imagesJSON = `["` + req.Images[0] + `"`
-		for i := 1; i < len(req.Images); i++ {
-			imagesJSON += `,"` + req.Images[i] + `"`
-		}
-		imagesJSON += `]`
+		imagesStr = strings.Join(req.Images, ",")
 	}
 
 	post := &models.Post{
 		UserID:   userID.(uint),
 		Content:  req.Content,
-		Images:   imagesJSON,
+		Images:   imagesStr,
 		Type:     req.Type,
 		IsPublic: req.IsPublic,
 	}
@@ -171,9 +168,14 @@ func (h *Handlers) LikePost(c *gin.Context) {
 	}
 
 	// 创建点赞记录
+	postIDUint, err := strconv.ParseUint(postID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
 	like := &models.Like{
 		UserID: userID.(uint),
-		PostID: uint(postID),
+		PostID: uint(postIDUint),
 	}
 
 	if err := h.DB.Create(like).Error; err != nil {
@@ -222,9 +224,14 @@ func (h *Handlers) CreateComment(c *gin.Context) {
 		return
 	}
 
+	postIDUint, err := strconv.ParseUint(postID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid post ID"})
+		return
+	}
 	comment := &models.Comment{
 		UserID:  userID.(uint),
-		PostID:  uint(postID),
+		PostID:  uint(postIDUint),
 		Content: req.Content,
 	}
 
@@ -307,9 +314,14 @@ func (h *Handlers) FollowUser(c *gin.Context) {
 	}
 
 	// 创建关注记录
+	followingIDUint, err := strconv.ParseUint(followingID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid following ID"})
+		return
+	}
 	follow := &models.Follow{
 		FollowerID:  userID.(uint),
-		FollowingID: uint(followingID),
+		FollowingID: uint(followingIDUint),
 	}
 
 	if err := h.DB.Create(follow).Error; err != nil {
@@ -460,9 +472,14 @@ func (h *Handlers) JoinChallenge(c *gin.Context) {
 	}
 
 	// 创建参与记录
+	challengeIDUint, err := strconv.ParseUint(challengeID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid challenge ID"})
+		return
+	}
 	participant := &models.ChallengeParticipant{
 		UserID:      userID.(uint),
-		ChallengeID: uint(challengeID),
+		ChallengeID: uint(challengeIDUint),
 		Progress:    0,
 	}
 

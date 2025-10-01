@@ -3,419 +3,497 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"fittracker/internal/api"
+	"fittracker/internal/config"
+	"fittracker/internal/models"
+	"fittracker/internal/services"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
-const baseURL = "http://localhost:8080/api/v1"
+func TestFitTrackerAPI(t *testing.T) {
+	// 设置测试环境
+	gin.SetMode(gin.TestMode)
 
-type AuthResponse struct {
-	Message string `json:"message"`
-	Data    struct {
-		Token     string `json:"token"`
-		User      User   `json:"user"`
-		ExpiresAt string `json:"expires_at"`
-	} `json:"data"`
+	// 初始化测试数据库
+	db := setupTestDB(t)
+	defer cleanupTestDB(t, db)
+
+	// 初始化服务
+	userService := services.NewUserService(db)
+	trainingService := services.NewTrainingService(db)
+	communityService := services.NewCommunityService(db)
+	messageService := services.NewMessageService(db)
+	aiService := services.NewAIService(&config.AIConfig{})
+
+	// 初始化处理器
+	handlers := api.NewHandlers(
+		userService,
+		trainingService,
+		communityService,
+		messageService,
+		aiService,
+	)
+
+	// 创建测试路由
+	router := setupTestRouter(handlers)
+
+	t.Run("用户注册登录测试", func(t *testing.T) {
+		testUserRegistration(t, router)
+		testUserLogin(t, router)
+	})
+
+	t.Run("训练功能测试", func(t *testing.T) {
+		testCreateTrainingPlan(t, router)
+		testGetTodayPlan(t, router)
+		testGenerateAIPlan(t, router)
+		testCompleteExercise(t, router)
+	})
+
+	t.Run("社区功能测试", func(t *testing.T) {
+		testCreatePost(t, router)
+		testLikePost(t, router)
+		testFollowUser(t, router)
+		testGetFollowingPosts(t, router)
+	})
+
+	t.Run("消息功能测试", func(t *testing.T) {
+		testCreateChat(t, router)
+		testSendMessage(t, router)
+		testGetNotifications(t, router)
+	})
+
+	t.Run("AI功能测试", func(t *testing.T) {
+		testAIChat(t, router)
+		testGenerateTrainingPlan(t, router)
+	})
 }
 
-type User struct {
-	ID            int    `json:"id"`
-	Username      string `json:"username"`
-	Email         string `json:"email"`
-	FirstName     string `json:"first_name"`
-	LastName      string `json:"last_name"`
-	TotalWorkouts int    `json:"total_workouts"`
-	TotalCheckins int    `json:"total_checkins"`
-	CurrentStreak int    `json:"current_streak"`
-	LongestStreak int    `json:"longest_streak"`
-}
-
-type Workout struct {
-	ID         int     `json:"id"`
-	UserID     int     `json:"user_id"`
-	Name       string  `json:"name"`
-	Type       string  `json:"type"`
-	Duration   int     `json:"duration"`
-	Calories   int     `json:"calories"`
-	Difficulty string  `json:"difficulty"`
-	Notes      string  `json:"notes"`
-	Rating     float64 `json:"rating"`
-}
-
-type Post struct {
-	ID            int    `json:"id"`
-	UserID        int    `json:"user_id"`
-	Content       string `json:"content"`
-	LikesCount    int    `json:"likes_count"`
-	CommentsCount int    `json:"comments_count"`
-	IsPublic      bool   `json:"is_public"`
-}
-
-var token string
-
-func main() {
-	fmt.Println("🚀 开始测试 FitTracker API...")
-
-	// 测试健康检查
-	testHealthCheck()
-
-	// 测试用户注册
-	testRegister()
-
-	// 测试用户登录
-	testLogin()
-
-	// 测试获取用户资料
-	testGetProfile()
-
-	// 测试创建训练记录
-	testCreateWorkout()
-
-	// 测试获取训练记录
-	testGetWorkouts()
-
-	// 测试BMI计算
-	testCalculateBMI()
-
-	// 测试发布动态
-	testCreatePost()
-
-	// 测试获取动态
-	testGetPosts()
-
-	// 测试签到
-	testCreateCheckin()
-
-	// 测试获取签到记录
-	testGetCheckins()
-
-	fmt.Println("✅ 所有测试完成！")
-}
-
-func testHealthCheck() {
-	fmt.Println("\n📋 测试健康检查...")
-
-	resp, err := http.Get(baseURL + "/health")
-	if err != nil {
-		fmt.Printf("❌ 健康检查失败: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 {
-		fmt.Println("✅ 健康检查通过")
-	} else {
-		fmt.Printf("❌ 健康检查失败，状态码: %d\n", resp.StatusCode)
-	}
-}
-
-func testRegister() {
-	fmt.Println("\n👤 测试用户注册...")
-
-	registerData := map[string]interface{}{
-		"username":   "testuser",
-		"email":      "test@example.com",
-		"password":   "password123",
-		"first_name": "Test",
-		"last_name":  "User",
+func testUserRegistration(t *testing.T, router *gin.Engine) {
+	registerReq := models.RegisterRequest{
+		Username: "testuser",
+		Email:    "test@example.com",
+		Password: "password123",
+		Nickname: "测试用户",
 	}
 
-	jsonData, _ := json.Marshal(registerData)
-	resp, err := http.Post(baseURL+"/auth/register", "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Printf("❌ 注册失败: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 201 {
-		fmt.Println("✅ 用户注册成功")
-	} else {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("❌ 注册失败，状态码: %d, 响应: %s\n", resp.StatusCode, string(body))
-	}
-}
-
-func testLogin() {
-	fmt.Println("\n🔐 测试用户登录...")
-
-	loginData := map[string]interface{}{
-		"email":    "test@example.com",
-		"password": "password123",
-	}
-
-	jsonData, _ := json.Marshal(loginData)
-	resp, err := http.Post(baseURL+"/auth/login", "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Printf("❌ 登录失败: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 {
-		var authResp AuthResponse
-		json.NewDecoder(resp.Body).Decode(&authResp)
-		token = authResp.Data.Token
-		fmt.Println("✅ 用户登录成功")
-		fmt.Printf("   用户: %s (%s)\n", authResp.Data.User.Username, authResp.Data.User.Email)
-	} else {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("❌ 登录失败，状态码: %d, 响应: %s\n", resp.StatusCode, string(body))
-	}
-}
-
-func testGetProfile() {
-	fmt.Println("\n👤 测试获取用户资料...")
-
-	if token == "" {
-		fmt.Println("❌ 未登录，跳过测试")
-		return
-	}
-
-	req, _ := http.NewRequest("GET", baseURL+"/users/profile", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("❌ 获取用户资料失败: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 {
-		fmt.Println("✅ 获取用户资料成功")
-	} else {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("❌ 获取用户资料失败，状态码: %d, 响应: %s\n", resp.StatusCode, string(body))
-	}
-}
-
-func testCreateWorkout() {
-	fmt.Println("\n💪 测试创建训练记录...")
-
-	if token == "" {
-		fmt.Println("❌ 未登录，跳过测试")
-		return
-	}
-
-	workoutData := map[string]interface{}{
-		"name":       "测试训练",
-		"type":       "力量训练",
-		"duration":   30,
-		"calories":   200,
-		"difficulty": "初级",
-		"notes":      "API测试训练",
-		"rating":     4.5,
-	}
-
-	jsonData, _ := json.Marshal(workoutData)
-	req, _ := http.NewRequest("POST", baseURL+"/workouts", bytes.NewBuffer(jsonData))
-	req.Header.Set("Authorization", "Bearer "+token)
+	reqBody, _ := json.Marshal(registerReq)
+	req := httptest.NewRequest("POST", "/api/v1/users/register", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("❌ 创建训练记录失败: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
 
-	if resp.StatusCode == 201 {
-		fmt.Println("✅ 创建训练记录成功")
-	} else {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("❌ 创建训练记录失败，状态码: %d, 响应: %s\n", resp.StatusCode, string(body))
-	}
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "注册成功", response["message"])
 }
 
-func testGetWorkouts() {
-	fmt.Println("\n📋 测试获取训练记录...")
-
-	if token == "" {
-		fmt.Println("❌ 未登录，跳过测试")
-		return
+func testUserLogin(t *testing.T, router *gin.Engine) {
+	loginReq := models.LoginRequest{
+		Username: "testuser",
+		Password: "password123",
 	}
 
-	req, _ := http.NewRequest("GET", baseURL+"/workouts?page=1&limit=10", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("❌ 获取训练记录失败: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 {
-		fmt.Println("✅ 获取训练记录成功")
-	} else {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("❌ 获取训练记录失败，状态码: %d, 响应: %s\n", resp.StatusCode, string(body))
-	}
-}
-
-func testCalculateBMI() {
-	fmt.Println("\n📊 测试BMI计算...")
-
-	if token == "" {
-		fmt.Println("❌ 未登录，跳过测试")
-		return
-	}
-
-	bmiData := map[string]interface{}{
-		"height": 175,
-		"weight": 70,
-		"age":    25,
-		"gender": "male",
-	}
-
-	jsonData, _ := json.Marshal(bmiData)
-	req, _ := http.NewRequest("POST", baseURL+"/bmi/calculate", bytes.NewBuffer(jsonData))
-	req.Header.Set("Authorization", "Bearer "+token)
+	reqBody, _ := json.Marshal(loginReq)
+	req := httptest.NewRequest("POST", "/api/v1/users/login", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("❌ BMI计算失败: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
 
-	if resp.StatusCode == 200 {
-		fmt.Println("✅ BMI计算成功")
-	} else {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("❌ BMI计算失败，状态码: %d, 响应: %s\n", resp.StatusCode, string(body))
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "登录成功", response["message"])
+	assert.NotEmpty(t, response["token"])
 }
 
-func testCreatePost() {
-	fmt.Println("\n📝 测试发布动态...")
+func testCreateTrainingPlan(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
 
-	if token == "" {
-		fmt.Println("❌ 未登录，跳过测试")
-		return
+	planReq := models.CreatePlanRequest{
+		Name:        "测试训练计划",
+		Description: "这是一个测试训练计划",
+		Date:        "2024-01-01",
+		Exercises: []models.CreateExerciseRequest{
+			{
+				Name:         "深蹲",
+				Description:  "全身力量训练",
+				Category:     "腿",
+				Difficulty:   "中级",
+				MuscleGroups: []string{"股四头肌", "臀大肌"},
+				Equipment:    []string{"自重"},
+				Sets: []models.CreateSetRequest{
+					{Reps: 15, Weight: 0, RestTime: 60, Order: 1},
+					{Reps: 12, Weight: 0, RestTime: 60, Order: 2},
+				},
+				Order: 1,
+			},
+		},
 	}
 
-	postData := map[string]interface{}{
-		"content":   "今天完成了测试训练，感觉很好！",
-		"type":      "训练",
-		"is_public": true,
-	}
-
-	jsonData, _ := json.Marshal(postData)
-	req, _ := http.NewRequest("POST", baseURL+"/community/posts", bytes.NewBuffer(jsonData))
+	reqBody, _ := json.Marshal(planReq)
+	req := httptest.NewRequest("POST", "/api/v1/training/plans", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "训练计划创建成功", response["message"])
+}
+
+func testGetTodayPlan(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	req := httptest.NewRequest("GET", "/api/v1/training/plans/today", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.NotNil(t, response["plan"])
+}
+
+func testGenerateAIPlan(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	aiReq := models.GenerateAIPlanRequest{
+		Goal:       "减脂",
+		Duration:   45,
+		Difficulty: "中级",
+		Equipment:  []string{"自重", "哑铃"},
+		FocusAreas: []string{"全身"},
+	}
+
+	reqBody, _ := json.Marshal(aiReq)
+	req := httptest.NewRequest("POST", "/api/v1/training/plans/ai-generate", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "AI训练计划生成成功", response["message"])
+}
+
+func testCompleteExercise(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	completeReq := models.CompleteExerciseRequest{
+		SetIndex: 0,
+	}
+
+	reqBody, _ := json.Marshal(completeReq)
+	req := httptest.NewRequest("POST", "/api/v1/training/exercises/test_exercise/complete", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "动作完成记录成功", response["message"])
+}
+
+func testCreatePost(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	postReq := models.CreatePostRequest{
+		Content: "今天完成了训练！",
+		Type:    "text",
+		Tags:    []string{"健身", "训练", "打卡"},
+	}
+
+	reqBody, _ := json.Marshal(postReq)
+	req := httptest.NewRequest("POST", "/api/v1/community/posts", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "帖子发布成功", response["message"])
+}
+
+func testLikePost(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	req := httptest.NewRequest("POST", "/api/v1/community/posts/test_post/like", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "操作成功", response["message"])
+}
+
+func testFollowUser(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	req := httptest.NewRequest("POST", "/api/v1/community/users/test_user/follow", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "关注成功", response["message"])
+}
+
+func testGetFollowingPosts(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	req := httptest.NewRequest("GET", "/api/v1/community/posts/following", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.NotNil(t, response["posts"])
+}
+
+func testCreateChat(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	chatReq := models.CreateChatRequest{
+		UserID: "test_user_2",
+	}
+
+	reqBody, _ := json.Marshal(chatReq)
+	req := httptest.NewRequest("POST", "/api/v1/messages/chats", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "聊天创建成功", response["message"])
+}
+
+func testSendMessage(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	messageReq := models.SendMessageRequest{
+		Content: "你好！",
+		Type:    "text",
+	}
+
+	reqBody, _ := json.Marshal(messageReq)
+	req := httptest.NewRequest("POST", "/api/v1/messages/chats/test_chat/messages", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.NotNil(t, response["message"])
+}
+
+func testGetNotifications(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	req := httptest.NewRequest("GET", "/api/v1/messages/notifications", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.NotNil(t, response["notifications"])
+}
+
+func testAIChat(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	chatReq := models.AIChatRequest{
+		Message: "帮我制定一个减脂训练计划",
+		Context: "训练",
+	}
+
+	reqBody, _ := json.Marshal(chatReq)
+	req := httptest.NewRequest("POST", "/api/v1/ai/chat", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.NotNil(t, response["message"])
+}
+
+func testGenerateTrainingPlan(t *testing.T, router *gin.Engine) {
+	token := getAuthToken(t, router)
+
+	planReq := models.GenerateTrainingPlanRequest{
+		Goal:       "增肌",
+		Duration:   60,
+		Difficulty: "高级",
+		Equipment:  []string{"杠铃", "哑铃", "器械"},
+		FocusAreas: []string{"胸", "背", "腿"},
+	}
+
+	reqBody, _ := json.Marshal(planReq)
+	req := httptest.NewRequest("POST", "/api/v1/ai/training-plan", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	assert.NoError(t, err)
+	assert.Equal(t, "AI训练计划生成成功", response["message"])
+}
+
+// 辅助函数
+func getAuthToken(t *testing.T, router *gin.Engine) string {
+	loginReq := models.LoginRequest{
+		Username: "testuser",
+		Password: "password123",
+	}
+
+	reqBody, _ := json.Marshal(loginReq)
+	req := httptest.NewRequest("POST", "/api/v1/users/login", bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("❌ 发布动态失败: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
 
-	if resp.StatusCode == 201 {
-		fmt.Println("✅ 发布动态成功")
-	} else {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("❌ 发布动态失败，状态码: %d, 响应: %s\n", resp.StatusCode, string(body))
-	}
+	var response map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &response)
+
+	return response["token"].(string)
 }
 
-func testGetPosts() {
-	fmt.Println("\n📋 测试获取动态...")
-
-	if token == "" {
-		fmt.Println("❌ 未登录，跳过测试")
-		return
-	}
-
-	req, _ := http.NewRequest("GET", baseURL+"/community/posts?page=1&limit=10", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("❌ 获取动态失败: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 {
-		fmt.Println("✅ 获取动态成功")
-	} else {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("❌ 获取动态失败，状态码: %d, 响应: %s\n", resp.StatusCode, string(body))
-	}
+func setupTestDB(t *testing.T) *gorm.DB {
+	// 这里应该设置测试数据库
+	// 为了简化，这里返回nil，实际测试中需要真实的数据库连接
+	return nil
 }
 
-func testCreateCheckin() {
-	fmt.Println("\n✅ 测试签到...")
-
-	if token == "" {
-		fmt.Println("❌ 未登录，跳过测试")
-		return
-	}
-
-	checkinData := map[string]interface{}{
-		"type":       "训练",
-		"notes":      "完成了今天的训练",
-		"mood":       "开心",
-		"energy":     8,
-		"motivation": 9,
-	}
-
-	jsonData, _ := json.Marshal(checkinData)
-	req, _ := http.NewRequest("POST", baseURL+"/checkins", bytes.NewBuffer(jsonData))
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("❌ 签到失败: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 201 {
-		fmt.Println("✅ 签到成功")
-	} else {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("❌ 签到失败，状态码: %d, 响应: %s\n", resp.StatusCode, string(body))
-	}
+func cleanupTestDB(t *testing.T, db *gorm.DB) {
+	// 清理测试数据
 }
 
-func testGetCheckins() {
-	fmt.Println("\n📋 测试获取签到记录...")
+func setupTestRouter(handlers *api.Handlers) *gin.Engine {
+	router := gin.New()
 
-	if token == "" {
-		fmt.Println("❌ 未登录，跳过测试")
-		return
+	// 设置测试路由
+	v1 := router.Group("/api/v1")
+	{
+		// 用户相关
+		users := v1.Group("/users")
+		{
+			users.POST("/register", handlers.Register)
+			users.POST("/login", handlers.Login)
+		}
+
+		// 训练相关
+		training := v1.Group("/training")
+		{
+			training.GET("/plans/today", handlers.GetTodayPlan)
+			training.POST("/plans", handlers.CreatePlan)
+			training.POST("/plans/ai-generate", handlers.GenerateAIPlan)
+			training.POST("/exercises/:id/complete", handlers.CompleteExercise)
+		}
+
+		// 社区相关
+		community := v1.Group("/community")
+		{
+			community.GET("/posts/following", handlers.GetFollowingPosts)
+			community.POST("/posts", handlers.CreatePost)
+			community.POST("/posts/:id/like", handlers.LikePost)
+			community.POST("/users/:id/follow", handlers.FollowUser)
+		}
+
+		// 消息相关
+		messages := v1.Group("/messages")
+		{
+			messages.POST("/chats", handlers.CreateChat)
+			messages.POST("/chats/:id/messages", handlers.SendMessage)
+			messages.GET("/notifications", handlers.GetNotifications)
+		}
+
+		// AI相关
+		ai := v1.Group("/ai")
+		{
+			ai.POST("/chat", handlers.AIChat)
+			ai.POST("/training-plan", handlers.GenerateTrainingPlan)
+		}
 	}
 
-	req, _ := http.NewRequest("GET", baseURL+"/checkins?page=1&limit=10", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Printf("❌ 获取签到记录失败: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == 200 {
-		fmt.Println("✅ 获取签到记录成功")
-	} else {
-		body, _ := io.ReadAll(resp.Body)
-		fmt.Printf("❌ 获取签到记录失败，状态码: %d, 响应: %s\n", resp.StatusCode, string(body))
-	}
+	return router
 }

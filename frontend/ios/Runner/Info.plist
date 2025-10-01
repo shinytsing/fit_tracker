@@ -45,5 +45,31 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- 权限配置 -->
+	<key>NSCameraUsageDescription</key>
+	<string>FitTracker需要访问相机来拍摄健身照片</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FitTracker需要访问相册来选择健身照片</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>FitTracker需要访问位置信息来记录运动轨迹</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>FitTracker需要访问麦克风来录制运动视频</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>FitTracker需要访问健康数据来同步运动记录</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>FitTracker需要更新健康数据来记录运动成果</string>
+	<key>NSMotionUsageDescription</key>
+	<string>FitTracker需要访问运动传感器来追踪运动数据</string>
+	<key>NSContactsUsageDescription</key>
+	<string>FitTracker需要访问通讯录来邀请朋友一起健身</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>FitTracker需要访问日历来安排训练计划</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>FitTracker需要访问提醒事项来设置健身提醒</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>FitTracker使用Face ID来保护您的隐私数据</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>FitTracker需要跟踪您的使用情况来提供个性化服务</string>
 </dict>
 </plist>

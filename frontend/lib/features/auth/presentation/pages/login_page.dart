@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/providers/auth_provider.dart';
-import '../../../../core/router/app_router.dart';
+// import '../../../../core/router/app_router.dart';
 
 /// 登录页面
 class LoginPage extends ConsumerStatefulWidget {
@@ -144,7 +144,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 // 注册链接
                 TextButton(
                   onPressed: () {
-                    context.go(AppRoutes.register);
+                    context.go('/register');
                   },
                   child: const Text('还没有账号？立即注册'),
                 ),

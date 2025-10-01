@@ -1,37 +1,42 @@
-# Flutter 前端 Dockerfile
-FROM ubuntu:22.04
-
-# 安装必要的依赖
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    unzip \
-    xz-utils \
-    zip \
-    libglu1-mesa \
-    && rm -rf /var/lib/apt/lists/*
-
-# 安装 Flutter
-RUN git clone https://github.com/flutter/flutter.git -b stable /flutter
-ENV PATH="/flutter/bin:${PATH}"
-
-# 验证 Flutter 安装
-RUN flutter doctor
+# FitTracker 前端 Dockerfile
+FROM node:18-alpine AS build
 
 # 设置工作目录
 WORKDIR /app
 
-# 复制项目文件
-COPY . .
+# 复制package文件
+COPY pubspec.yaml pubspec.lock ./
+
+# 安装Flutter
+RUN apk add --no-cache curl unzip && \
+    curl -o flutter.zip https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.16.0-stable.zip && \
+    unzip flutter.zip && \
+    mv flutter /opt/flutter && \
+    rm flutter.zip
+
+# 设置Flutter环境
+ENV PATH="/opt/flutter/bin:${PATH}"
 
 # 获取依赖
 RUN flutter pub get
 
-# 构建应用
-RUN flutter build apk --release
+# 复制源代码
+COPY . .
 
-# 暴露端口（如果需要 web 版本）
-EXPOSE 8080
+# 构建Web应用
+RUN flutter build web --release
 
-# 启动命令
-CMD ["flutter", "run", "--web-port", "8080", "--web-hostname", "0.0.0.0"]
+# 使用Nginx提供静态文件服务
+FROM nginx:alpine
+
+# 复制构建的文件
+COPY --from=build /app/build/web /usr/share/nginx/html
+
+# 复制Nginx配置
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# 暴露端口
+EXPOSE 80
+
+# 启动Nginx
+CMD ["nginx", "-g", "daemon off;"]

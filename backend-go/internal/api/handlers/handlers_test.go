@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"fittracker/backend/internal/domain/models"
+	"fittracker/internal/domain/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

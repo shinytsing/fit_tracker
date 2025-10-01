@@ -1,10 +1,12 @@
 package handlers
 
 import (
-	"fittracker/backend/internal/config"
-	"fittracker/backend/internal/domain/services"
-	"fittracker/backend/internal/infrastructure/cache"
+	"fittracker/internal/config"
+	"fittracker/internal/domain/services"
+	"fittracker/internal/infrastructure/cache"
+	"net/http"
 
+	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
 )
@@ -53,4 +55,39 @@ func New(db *gorm.DB, redis *redis.Client, cacheService *cache.CacheService, cfg
 		AICoachService:     aiCoachService,
 		AINutritionService: aiNutritionService,
 	}
+}
+
+// HealthCheck 健康检查端点
+func (h *Handlers) HealthCheck(c *gin.Context) {
+	// 检查数据库连接
+	sqlDB, err := h.DB.DB()
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status": "unhealthy",
+			"error":  "database connection failed",
+		})
+		return
+	}
+
+	if err := sqlDB.Ping(); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status": "unhealthy",
+			"error":  "database ping failed",
+		})
+		return
+	}
+
+	// 检查 Redis 连接
+	if err := h.Redis.Ping(c.Request.Context()).Err(); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"status": "unhealthy",
+			"error":  "redis connection failed",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "healthy",
+		"message": "FitTracker API is running",
+	})
 }

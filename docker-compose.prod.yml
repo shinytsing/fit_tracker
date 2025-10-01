@@ -2,12 +2,12 @@ version: '3.8'
 
 services:
   # PostgreSQL 数据库
-  postgres:
+  db:
     image: postgres:15-alpine
     container_name: fittracker-postgres-prod
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB:-fittracker}
+      POSTGRES_USER: ${POSTGRES_USER:-fittracker}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
@@ -15,9 +15,9 @@ services:
       - ./backend-go/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - fittracker-network
-    restart: always
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fittracker} -d ${POSTGRES_DB:-fittracker}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,21 +25,19 @@ services:
       resources:
         limits:
           memory: 1G
-          cpus: '0.5'
         reservations:
           memory: 512M
-          cpus: '0.25'
 
   # Redis 缓存
   redis:
     image: redis:7-alpine
     container_name: fittracker-redis-prod
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     networks:
       - fittracker-network
-    restart: always
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
@@ -49,70 +47,80 @@ services:
       resources:
         limits:
           memory: 512M
-          cpus: '0.25'
         reservations:
           memory: 256M
-          cpus: '0.1'
 
   # Go 后端服务
   backend:
     build:
       context: ./backend-go
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
+    image: fittracker-backend:latest
     container_name: fittracker-backend-prod
     environment:
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=8080
       - SERVER_MODE=release
-      - DB_HOST=postgres
+      - DB_HOST=db
       - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER}
+      - DB_USER=${POSTGRES_USER:-fittracker}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_NAME=${POSTGRES_DB}
-      - DB_SSL_MODE=require
+      - DB_NAME=${POSTGRES_DB:-fittracker}
+      - DB_SSL_MODE=${DB_SSL_MODE:-require}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - REDIS_DB=0
+      - DATABASE_URL=postgres://${POSTGRES_USER:-fittracker}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-fittracker}?sslmode=${DB_SSL_MODE:-disable}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRE_HOURS=24
+      - JWT_EXPIRE_HOURS=${JWT_EXPIRE_HOURS:-24}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-      - DEEPSEEK_API_URL=${DEEPSEEK_API_URL}
+      - DEEPSEEK_API_URL=${DEEPSEEK_API_URL:-https://api.deepseek.com/v1/chat/completions}
       - TENCENT_HUNYUAN_API_KEY=${TENCENT_HUNYUAN_API_KEY}
-      - TENCENT_HUNYUAN_API_URL=${TENCENT_HUNYUAN_API_URL}
-      - LOG_LEVEL=info
-      - LOG_FORMAT=json
+      - TENCENT_HUNYUAN_API_URL=${TENCENT_HUNYUAN_API_URL:-https://hunyuan.tencentcloudapi.com}
     networks:
       - fittracker-network
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    restart: always
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     volumes:
-      - ./backend-go/logs:/app/logs
+      - ./logs:/app/logs
     deploy:
-      replicas: 2
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # Flutter Web 前端
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: fittracker-frontend:latest
+    container_name: fittracker-frontend-prod
+    networks:
+      - fittracker-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+    deploy:
       resources:
         limits:
           memory: 512M
-          cpus: '0.5'
         reservations:
           memory: 256M
-          cpus: '0.25'
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
 
-  # Nginx 反向代理和负载均衡
+  # Nginx 反向代理
   nginx:
     image: nginx:alpine
     container_name: fittracker-nginx-prod
@@ -120,68 +128,36 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/ssl:/etc/nginx/ssl
-      - ./frontend/build/web:/usr/share/nginx/html
-      - nginx_logs:/var/log/nginx
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl_certs:/etc/nginx/ssl:ro
+      - ./nginx/logs:/var/log/nginx
+      - frontend_build:/usr/share/nginx/html:ro
     networks:
       - fittracker-network
     depends_on:
       - backend
-    restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - frontend
+    restart: unless-stopped
     deploy:
       resources:
         limits:
           memory: 256M
-          cpus: '0.25'
         reservations:
           memory: 128M
-          cpus: '0.1'
 
-  # 日志收集服务
-  filebeat:
-    image: docker.elastic.co/beats/filebeat:8.8.0
-    container_name: fittracker-filebeat
-    user: root
-    volumes:
-      - ./monitoring/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - ./backend-go/logs:/var/log/app:ro
-      - nginx_logs:/var/log/nginx:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - fittracker-network
-    depends_on:
-      - backend
-      - nginx
-    restart: always
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: '0.1'
-        reservations:
-          memory: 128M
-          cpus: '0.05'
-
-  # 监控服务
+  # 监控服务 - Prometheus
   prometheus:
     image: prom/prometheus:latest
     container_name: fittracker-prometheus-prod
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.prod.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     networks:
       - fittracker-network
-    restart: always
+    restart: unless-stopped
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -194,78 +170,88 @@ services:
       resources:
         limits:
           memory: 1G
-          cpus: '0.5'
         reservations:
           memory: 512M
-          cpus: '0.25'
 
+  # 监控服务 - Grafana
   grafana:
     image: grafana/grafana:latest
     container_name: fittracker-grafana-prod
     ports:
       - "3001:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
-      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY}
-      - GF_SERVER_DOMAIN=${GRAFANA_DOMAIN}
-      - GF_SERVER_ROOT_URL=https://${GRAFANA_DOMAIN}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
     networks:
       - fittracker-network
     depends_on:
       - prometheus
-    restart: always
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  # 日志聚合 - Loki
+  loki:
+    image: grafana/loki:latest
+    container_name: fittracker-loki-prod
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - fittracker-network
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
     deploy:
       resources:
         limits:
           memory: 512M
-          cpus: '0.25'
         reservations:
           memory: 256M
-          cpus: '0.1'
 
-  # 告警管理
-  alertmanager:
-    image: prom/alertmanager:latest
-    container_name: fittracker-alertmanager-prod
-    ports:
-      - "9093:9093"
+  # 日志收集 - Promtail
+  promtail:
+    image: grafana/promtail:latest
+    container_name: fittracker-promtail-prod
     volumes:
-      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-      - alertmanager_data:/alertmanager
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+      - ./logs:/var/log/app:ro
+      - /var/log:/var/log/host:ro
     networks:
       - fittracker-network
     depends_on:
-      - prometheus
-    restart: always
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
-      - '--web.external-url=https://${ALERTMANAGER_DOMAIN}'
+      - loki
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
     deploy:
       resources:
         limits:
           memory: 256M
-          cpus: '0.1'
         reservations:
           memory: 128M
-          cpus: '0.05'
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
+  frontend_build:
+    driver: local
   prometheus_data:
     driver: local
   grafana_data:
     driver: local
-  alertmanager_data:
-    driver: local
-  nginx_logs:
+  loki_data:
     driver: local
 
 networks:

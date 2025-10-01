@@ -1,41 +1,41 @@
-# Build stage
-FROM golang:1.21-alpine AS builder
+# FitTracker 后端 Dockerfile
+FROM golang:1.23-alpine AS build
 
-# Set working directory
+# 设置工作目录
 WORKDIR /app
 
-# Install dependencies
+# 安装依赖
 RUN apk add --no-cache git
 
-# Copy go mod files
+# 复制go mod文件
 COPY go.mod go.sum ./
 
-# Download dependencies
+# 下载依赖
 RUN go mod download
 
-# Copy source code
+# 复制源代码
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server
+# 构建应用
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server cmd/server/main.go
 
-# Final stage
+# 使用Alpine作为运行时
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS requests
+# 安装ca证书
 RUN apk --no-cache add ca-certificates
 
-# Create app directory
+# 设置工作目录
 WORKDIR /root/
 
-# Copy the binary from builder stage
-COPY --from=builder /app/main .
+# 复制构建的二进制文件
+COPY --from=build /app/server .
 
-# Copy environment file
-COPY --from=builder /app/env.example .env
+# 复制配置文件
+COPY --from=build /app/.env .
 
-# Expose port
+# 暴露端口
 EXPOSE 8080
 
-# Run the application
-CMD ["./main"]
+# 运行应用
+CMD ["./server"]

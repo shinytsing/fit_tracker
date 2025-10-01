@@ -1,9 +1,9 @@
 package services
 
 import (
-	"fittracker/backend/internal/config"
-	"fittracker/backend/internal/domain/models"
-	"fittracker/backend/internal/domain/repositories"
+	"fittracker/internal/config"
+	"fittracker/internal/domain/models"
+	"fittracker/internal/domain/repositories"
 
 	"gorm.io/gorm"
 )

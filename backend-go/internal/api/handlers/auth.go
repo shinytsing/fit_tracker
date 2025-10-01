@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"fittracker/backend/internal/api/middleware"
-	"fittracker/backend/internal/domain/models"
+	"fittracker/internal/api/middleware"
+	"fittracker/internal/domain/models"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"

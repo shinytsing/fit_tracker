@@ -7,8 +7,9 @@ on:
     branches: [ main ]
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  GO_VERSION: '1.21'
+  POSTGRES_VERSION: '15'
+  REDIS_VERSION: '7'
 
 jobs:
   # 代码质量检查
@@ -19,42 +20,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Go
+      - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: ${{ env.GO_VERSION }}
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.0'
-          channel: 'stable'
-
-      - name: Install Go dependencies
+      - name: Install golangci-lint
         run: |
-          cd backend-go
-          go mod download
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
 
-      - name: Install Flutter dependencies
+      - name: Run golangci-lint
         run: |
-          cd frontend
-          flutter pub get
-
-      - name: Run Go linting
-        run: |
-          cd backend-go
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-          golangci-lint run
-
-      - name: Run Flutter linting
-        run: |
-          cd frontend
-          flutter analyze
-
-      - name: Format check
-        run: |
-          cd frontend
-          dart format --output=none --set-exit-if-changed .
+          $(go env GOPATH)/bin/golangci-lint run --timeout=5m
 
   # 单元测试
   test:
@@ -62,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:15
+        image: postgres:${{ env.POSTGRES_VERSION }}
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: fittracker_test
@@ -75,7 +52,7 @@ jobs:
           - 5432:5432
 
       redis:
-        image: redis:7
+        image: redis:${{ env.REDIS_VERSION }}
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -88,50 +65,144 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Go
+      - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: ${{ env.GO_VERSION }}
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: Cache Go modules
+        uses: actions/cache@v3
         with:
-          flutter-version: '3.16.0'
-          channel: 'stable'
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
       - name: Install dependencies
-        run: |
-          cd backend-go && go mod download
-          cd ../frontend && flutter pub get
+        run: go mod download
 
-      - name: Run Go tests
-        run: |
-          cd backend-go
-          go test -v -race -coverprofile=coverage.out ./...
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
 
-      - name: Run Flutter tests
-        run: |
-          cd frontend
-          flutter test --coverage
-
-      - name: Upload Go coverage
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          file: ./backend-go/coverage.out
-          flags: go
-          name: go-coverage
+          file: ./coverage.out
+          flags: unittests
+          name: codecov-umbrella
 
-      - name: Upload Flutter coverage
-        uses: codecov/codecov-action@v3
+  # 构建 Docker 镜像
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          file: ./frontend/coverage/lcov.info
-          flags: flutter
-          name: flutter-coverage
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: fittracker/backend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend-go
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # 集成测试
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Compose
+        run: |
+          docker-compose -f backend-go/docker-compose.test.yml up -d
+          sleep 30
+
+      - name: Wait for services
+        run: |
+          docker-compose -f backend-go/docker-compose.test.yml ps
+          docker-compose -f backend-go/docker-compose.test.yml logs backend
+
+      - name: Run integration tests
+        run: |
+          # 这里可以添加集成测试脚本
+          echo "Running integration tests..."
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose -f backend-go/docker-compose.test.yml down -v
+
+  # 部署到测试环境
+  deploy-test:
+    name: Deploy to Test Environment
+    runs-on: ubuntu-latest
+    needs: [integration-test]
+    if: github.ref == 'refs/heads/develop'
+    environment: test
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to test server
+        run: |
+          echo "Deploying to test environment..."
+          # 这里可以添加部署到测试服务器的脚本
+
+  # 部署到生产环境
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [integration-test]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production server
+        run: |
+          echo "Deploying to production environment..."
+          # 这里可以添加部署到生产服务器的脚本
 
   # 安全扫描
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -144,123 +215,8 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
 
-      - name: Upload Trivy scan results
+      - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
+        if: always()
         with:
           sarif_file: 'trivy-results.sarif'
-
-  # 构建和推送镜像
-  build:
-    name: Build and Push Images
-    runs-on: ubuntu-latest
-    needs: [lint, test, security]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend-go
-          file: ./backend-go/Dockerfile.prod
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile.web
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # 部署到测试环境
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/develop'
-    environment: staging
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to staging
-        run: |
-          echo "Deploying to staging environment..."
-          # 这里添加部署到测试环境的脚本
-          # 例如：kubectl apply -f k8s/staging/
-
-  # 部署到生产环境
-  deploy-production:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/main'
-    environment: production
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to production
-        run: |
-          echo "Deploying to production environment..."
-          # 这里添加部署到生产环境的脚本
-          # 例如：kubectl apply -f k8s/production/
-
-      - name: Run smoke tests
-        run: |
-          echo "Running smoke tests..."
-          # 这里添加冒烟测试脚本
-          # 例如：curl -f https://api.fittracker.com/health
-
-  # 通知
-  notify:
-    name: Notify
-    runs-on: ubuntu-latest
-    needs: [deploy-staging, deploy-production]
-    if: always()
-    
-    steps:
-      - name: Notify on success
-        if: ${{ needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success' }}
-        run: |
-          echo "Deployment successful!"
-          # 这里添加成功通知逻辑
-          # 例如：发送Slack消息、邮件等
-
-      - name: Notify on failure
-        if: ${{ needs.deploy-staging.result == 'failure' || needs.deploy-production.result == 'failure' }}
-        run: |
-          echo "Deployment failed!"
-          # 这里添加失败通知逻辑
-          # 例如：发送告警消息

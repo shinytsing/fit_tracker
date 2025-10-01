@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"fittracker/backend/internal/domain/models"
+	"fittracker/internal/domain/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -35,7 +35,7 @@ func (h *Handlers) GetCheckins(c *gin.Context) {
 	offset := (page - 1) * limit
 
 	var checkins []models.Checkin
-	if err := h.DB.Where("user_id = ?", userID).Offset(offset).Limit(limit).Order("date DESC").Find(&checkins).Error; err != nil {
+	if err := h.DB.Where("user_id = ?", userID).Preload("User").Offset(offset).Limit(limit).Order("date DESC").Find(&checkins).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "获取签到记录失败",
 			"code":  "DATABASE_ERROR",
@@ -87,6 +87,15 @@ func (h *Handlers) CreateCheckin(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "签到失败",
 			"code":  "CREATION_ERROR",
+		})
+		return
+	}
+
+	// 预加载用户信息，确保返回完整的签到记录
+	if err := h.DB.Preload("User").First(checkin, checkin.ID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "获取签到详情失败",
+			"code":  "DATABASE_ERROR",
 		})
 		return
 	}

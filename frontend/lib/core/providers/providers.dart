@@ -50,7 +50,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> _loadStoredAuth() async {
     state = state.copyWith(isLoading: true);
     try {
-      final token = await _authApiService._apiService.getToken();
+      final token = await _authApiService.getToken();
       if (token != null) {
         final user = await _authApiService.getProfile();
         state = state.copyWith(
@@ -433,10 +433,20 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
       state = state.copyWith(
         posts: state.posts.map((post) {
           if (post.id == postId) {
-            return Post.fromJson({
-              ...post.toJson(),
-              'likes_count': post.likesCount + 1,
-            });
+            return Post(
+              id: post.id,
+              userId: post.userId,
+              content: post.content,
+              images: post.images,
+              type: post.type,
+              isPublic: post.isPublic,
+              likesCount: post.likesCount + 1,
+              commentsCount: post.commentsCount,
+              sharesCount: post.sharesCount,
+              user: post.user,
+              createdAt: post.createdAt,
+              updatedAt: post.updatedAt,
+            );
           }
           return post;
         }).toList(),

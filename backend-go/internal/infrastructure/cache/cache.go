@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"fittracker/backend/internal/config"
+	"fittracker/internal/config"
 
 	"github.com/go-redis/redis/v8"
 )

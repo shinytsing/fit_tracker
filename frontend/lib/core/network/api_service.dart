@@ -11,7 +11,7 @@ class ApiService {
 
   void init() {
     _dio = Dio(BaseOptions(
-      baseUrl: 'http://localhost:8080/api/v1',
+      baseUrl: 'http://10.0.2.2:8080/api/v1',
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
@@ -78,7 +78,9 @@ class ApiService {
         options: options,
       );
     } on DioException catch (e) {
-      throw _handleError(e);
+      // 记录错误日志
+      print('API GET Error: ${e.message}');
+      rethrow; // 重新抛出，让调用方处理
     }
   }
 
@@ -97,7 +99,9 @@ class ApiService {
         options: options,
       );
     } on DioException catch (e) {
-      throw _handleError(e);
+      // 记录错误日志
+      print('API POST Error: ${e.message}');
+      rethrow; // 重新抛出，让调用方处理
     }
   }
 

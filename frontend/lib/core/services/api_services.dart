@@ -77,6 +77,11 @@ class AuthApiService {
     return User.fromJson(response.data['data']);
   }
 
+  // 获取Token
+  Future<String?> getToken() async {
+    return await _apiService.getToken();
+  }
+
   // 获取用户统计
   Future<Map<String, dynamic>> getUserStats() async {
     final response = await _apiService.get('/users/stats');
@@ -208,14 +213,19 @@ class WorkoutApiService {
     required int age,
     required String gender,
   }) async {
-    final response = await _apiService.post('/bmi/calculate', data: {
-      'height': height,
-      'weight': weight,
-      'age': age,
-      'gender': gender,
-    });
+    try {
+      final response = await _apiService.post('/bmi/calculate', data: {
+        'height': height,
+        'weight': weight,
+        'age': age,
+        'gender': gender,
+      });
 
-    return BMICalculation.fromJson(response.data['data']);
+      return BMICalculation.fromJson(response.data['data']);
+    } catch (e) {
+      print('BMI计算API调用失败: $e');
+      rethrow;
+    }
   }
 
   // 创建BMI记录
