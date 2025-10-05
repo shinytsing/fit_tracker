@@ -9,6 +9,10 @@ import '../widgets/figma/stats_card.dart';
 import '../widgets/figma/today_plan_card.dart';
 import '../widgets/figma/ai_plan_generator.dart';
 import '../widgets/figma/training_history_list.dart';
+import 'community_page.dart';
+import 'mates_page.dart';
+import 'messages_page.dart';
+import 'profile_page.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -22,10 +26,10 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const TrainingScreen(),
-    const CommunityScreen(),
-    const MatesScreen(),
-    const MessagesScreen(),
-    const ProfileScreen(),
+    const CommunityPage(),
+    const MatesPage(),
+    const MessagesPage(),
+    const ProfilePage(),
   ];
 
   final List<BottomNavigationItem> _navigationItems = [

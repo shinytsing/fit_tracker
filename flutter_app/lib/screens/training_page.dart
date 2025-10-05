@@ -19,7 +19,7 @@ class _TrainingPageState extends ConsumerState<TrainingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: isIOS ? const Color(0xFFF9FAFB) : AppTheme.background,
+      backgroundColor: isIOS ? const Color(0xFFF9FAFB) : AppTheme.backgroundColor,
       body: SafeArea(
         child: Column(
           children: [

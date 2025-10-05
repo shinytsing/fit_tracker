@@ -3,7 +3,7 @@ FitTracker Backend - API路由配置
 """
 
 from fastapi import APIRouter
-from app.api.api_v1.endpoints import auth, users, workout, bmi, community, messages, publish
+from app.api.api_v1.endpoints import auth, users, workout, bmi, community, messages, publish, buddies
 
 api_router = APIRouter()
 
@@ -27,3 +27,6 @@ api_router.include_router(messages.router, prefix="/messages", tags=["消息"])
 
 # 发布路由
 api_router.include_router(publish.router, prefix="/publish", tags=["发布"])
+
+# 搭子路由
+api_router.include_router(buddies.router, prefix="/buddies", tags=["搭子"])

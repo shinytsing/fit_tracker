@@ -7,6 +7,7 @@ class CustomButton extends StatelessWidget {
   final bool isIOS;
   final Color? backgroundColor;
   final Color? textColor;
+  final Color? borderColor;
   final EdgeInsetsGeometry? padding;
   final double? width;
 
@@ -17,6 +18,7 @@ class CustomButton extends StatelessWidget {
     required this.isIOS,
     this.backgroundColor,
     this.textColor,
+    this.borderColor,
     this.padding,
     this.width,
   });
@@ -31,6 +33,7 @@ class CustomButton extends StatelessWidget {
           backgroundColor: backgroundColor ?? AppTheme.primaryColor,
           foregroundColor: textColor ?? Colors.white,
           elevation: isIOS ? 0 : 2,
+          side: borderColor != null ? BorderSide(color: borderColor!) : null,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(isIOS ? 12 : 8),
           ),

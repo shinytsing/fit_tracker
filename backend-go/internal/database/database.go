@@ -48,10 +48,10 @@ func Initialize(cfg *config.Config) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	// 自动迁移数据库表 (暂时禁用，因为用户表已存在)
-	// if err := autoMigrate(db); err != nil {
-	// 	return nil, fmt.Errorf("failed to migrate database: %w", err)
-	// }
+	// 手动创建posts表结构
+	if err := createPostsTable(db); err != nil {
+		return nil, fmt.Errorf("failed to create posts table: %w", err)
+	}
 
 	log.Println("Database connected successfully")
 
@@ -84,8 +84,72 @@ func InitializeRedis(cfg *config.Config) (*redis.Client, error) {
 	return rdb, nil
 }
 
-func autoMigrate(db *gorm.DB) error {
-	// 先只迁移基础模型，避免复杂的依赖关系
-	// 暂时注释掉autoMigrate，因为很多模型定义丢失
+func createPostsTable(db *gorm.DB) error {
+	// 检查posts表是否存在
+	var exists bool
+	err := db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'posts')").Scan(&exists).Error
+	if err != nil {
+		return fmt.Errorf("failed to check if posts table exists: %w", err)
+	}
+
+	if !exists {
+		// 创建posts表
+		sql := `
+			CREATE TABLE posts (
+				id VARCHAR(255) PRIMARY KEY,
+				user_id UUID NOT NULL,
+				content TEXT NOT NULL,
+				type VARCHAR(50),
+				images JSONB,
+				video_url VARCHAR(500),
+				tags JSONB,
+				location VARCHAR(255),
+				workout_data JSONB,
+				like_count INTEGER DEFAULT 0,
+				comment_count INTEGER DEFAULT 0,
+				share_count INTEGER DEFAULT 0,
+				is_featured BOOLEAN DEFAULT FALSE,
+				is_pinned BOOLEAN DEFAULT FALSE,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			)
+		`
+
+		if err := db.Exec(sql).Error; err != nil {
+			return fmt.Errorf("failed to create posts table: %w", err)
+		}
+
+		log.Println("Posts table created successfully")
+	} else {
+		// 检查is_pinned和is_featured字段是否存在
+		var columnExists bool
+
+		// 检查is_pinned字段
+		err = db.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'posts' AND column_name = 'is_pinned')").Scan(&columnExists).Error
+		if err != nil {
+			return fmt.Errorf("failed to check is_pinned column: %w", err)
+		}
+
+		if !columnExists {
+			if err := db.Exec("ALTER TABLE posts ADD COLUMN is_pinned BOOLEAN DEFAULT FALSE").Error; err != nil {
+				return fmt.Errorf("failed to add is_pinned column: %w", err)
+			}
+			log.Println("Added is_pinned column to posts table")
+		}
+
+		// 检查is_featured字段
+		err = db.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'posts' AND column_name = 'is_featured')").Scan(&columnExists).Error
+		if err != nil {
+			return fmt.Errorf("failed to check is_featured column: %w", err)
+		}
+
+		if !columnExists {
+			if err := db.Exec("ALTER TABLE posts ADD COLUMN is_featured BOOLEAN DEFAULT FALSE").Error; err != nil {
+				return fmt.Errorf("failed to add is_featured column: %w", err)
+			}
+			log.Println("Added is_featured column to posts table")
+		}
+	}
+
 	return nil
 }

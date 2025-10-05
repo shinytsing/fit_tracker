@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
+	"gymates/internal/api"
 	"gymates/internal/config"
 	"gymates/internal/database"
 	"gymates/internal/middleware"
-	"gymates/internal/routes"
 	"gymates/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -154,20 +154,20 @@ func setupGlobalMiddleware(router *gin.Engine, redisClient *redis.Client) {
 
 // setupAPIRoutes 设置API路由
 func setupAPIRoutes(router *gin.Engine, services *services.Services) {
-	// API v1 路由组
-	v1 := router.Group("/api/v1")
+	// 初始化API处理器
+	apiHandlers := api.NewHandlers(
+		services.UserService,
+		services.AuthService,
+		services.TrainingService,
+		services.AIService,
+		services.MessageService,
+		services.BuddyService,
+		services.CommunityService,
+		services.UserProfileService,
+	)
 
-	// 初始化路由处理器
-	routeHandler := routes.NewRouteHandler(services)
-
-	// 设置各模块路由
-	routeHandler.SetupUserRoutes(v1)      // /api/v1/users/...
-	routeHandler.SetupTrainingRoutes(v1)  // /api/v1/training/...
-	routeHandler.SetupCommunityRoutes(v1) // /api/v1/posts/...
-	routeHandler.SetupGymRoutes(v1)       // /api/v1/gyms/...
-	routeHandler.SetupRestRoutes(v1)      // /api/v1/rest/...
-	routeHandler.SetupMessageRoutes(v1)   // /api/v1/messages/...
-	routeHandler.SetupTeamRoutes(v1)      // /api/v1/teams/...
+	// 注册所有路由
+	apiHandlers.Register(router)
 }
 
 // healthCheck 健康检查端点
