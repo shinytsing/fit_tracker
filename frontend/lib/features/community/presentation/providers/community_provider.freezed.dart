@@ -21,6 +21,7 @@ mixin _$CommunityState {
   List<Post> get followingPosts => throw _privateConstructorUsedError;
   List<Post> get recommendPosts => throw _privateConstructorUsedError;
   List<Post> get posts => throw _privateConstructorUsedError;
+  List<Post> get trendingPosts => throw _privateConstructorUsedError;
   List<User> get followingUsers => throw _privateConstructorUsedError;
   List<Topic> get trendingTopics => throw _privateConstructorUsedError;
   List<Topic> get hotTopics => throw _privateConstructorUsedError;
@@ -35,6 +36,7 @@ mixin _$CommunityState {
   List<User> get users => throw _privateConstructorUsedError;
   bool get hasMoreFollowing => throw _privateConstructorUsedError;
   bool get hasMoreRecommend => throw _privateConstructorUsedError;
+  bool get hasMoreTrending => throw _privateConstructorUsedError;
   String? get error => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
@@ -54,6 +56,7 @@ abstract class $CommunityStateCopyWith<$Res> {
       List<Post> followingPosts,
       List<Post> recommendPosts,
       List<Post> posts,
+      List<Post> trendingPosts,
       List<User> followingUsers,
       List<Topic> trendingTopics,
       List<Topic> hotTopics,
@@ -68,6 +71,7 @@ abstract class $CommunityStateCopyWith<$Res> {
       List<User> users,
       bool hasMoreFollowing,
       bool hasMoreRecommend,
+      bool hasMoreTrending,
       String? error});
 }
 
@@ -89,6 +93,7 @@ class _$CommunityStateCopyWithImpl<$Res, $Val extends CommunityState>
     Object? followingPosts = null,
     Object? recommendPosts = null,
     Object? posts = null,
+    Object? trendingPosts = null,
     Object? followingUsers = null,
     Object? trendingTopics = null,
     Object? hotTopics = null,
@@ -103,6 +108,7 @@ class _$CommunityStateCopyWithImpl<$Res, $Val extends CommunityState>
     Object? users = null,
     Object? hasMoreFollowing = null,
     Object? hasMoreRecommend = null,
+    Object? hasMoreTrending = null,
     Object? error = freezed,
   }) {
     return _then(_value.copyWith(
@@ -125,6 +131,10 @@ class _$CommunityStateCopyWithImpl<$Res, $Val extends CommunityState>
       posts: null == posts
           ? _value.posts
           : posts // ignore: cast_nullable_to_non_nullable
+              as List<Post>,
+      trendingPosts: null == trendingPosts
+          ? _value.trendingPosts
+          : trendingPosts // ignore: cast_nullable_to_non_nullable
               as List<Post>,
       followingUsers: null == followingUsers
           ? _value.followingUsers
@@ -182,6 +192,10 @@ class _$CommunityStateCopyWithImpl<$Res, $Val extends CommunityState>
           ? _value.hasMoreRecommend
           : hasMoreRecommend // ignore: cast_nullable_to_non_nullable
               as bool,
+      hasMoreTrending: null == hasMoreTrending
+          ? _value.hasMoreTrending
+          : hasMoreTrending // ignore: cast_nullable_to_non_nullable
+              as bool,
       error: freezed == error
           ? _value.error
           : error // ignore: cast_nullable_to_non_nullable
@@ -204,6 +218,7 @@ abstract class _$$CommunityStateImplCopyWith<$Res>
       List<Post> followingPosts,
       List<Post> recommendPosts,
       List<Post> posts,
+      List<Post> trendingPosts,
       List<User> followingUsers,
       List<Topic> trendingTopics,
       List<Topic> hotTopics,
@@ -218,6 +233,7 @@ abstract class _$$CommunityStateImplCopyWith<$Res>
       List<User> users,
       bool hasMoreFollowing,
       bool hasMoreRecommend,
+      bool hasMoreTrending,
       String? error});
 }
 
@@ -237,6 +253,7 @@ class __$$CommunityStateImplCopyWithImpl<$Res>
     Object? followingPosts = null,
     Object? recommendPosts = null,
     Object? posts = null,
+    Object? trendingPosts = null,
     Object? followingUsers = null,
     Object? trendingTopics = null,
     Object? hotTopics = null,
@@ -251,6 +268,7 @@ class __$$CommunityStateImplCopyWithImpl<$Res>
     Object? users = null,
     Object? hasMoreFollowing = null,
     Object? hasMoreRecommend = null,
+    Object? hasMoreTrending = null,
     Object? error = freezed,
   }) {
     return _then(_$CommunityStateImpl(
@@ -273,6 +291,10 @@ class __$$CommunityStateImplCopyWithImpl<$Res>
       posts: null == posts
           ? _value._posts
           : posts // ignore: cast_nullable_to_non_nullable
+              as List<Post>,
+      trendingPosts: null == trendingPosts
+          ? _value._trendingPosts
+          : trendingPosts // ignore: cast_nullable_to_non_nullable
               as List<Post>,
       followingUsers: null == followingUsers
           ? _value._followingUsers
@@ -330,6 +352,10 @@ class __$$CommunityStateImplCopyWithImpl<$Res>
           ? _value.hasMoreRecommend
           : hasMoreRecommend // ignore: cast_nullable_to_non_nullable
               as bool,
+      hasMoreTrending: null == hasMoreTrending
+          ? _value.hasMoreTrending
+          : hasMoreTrending // ignore: cast_nullable_to_non_nullable
+              as bool,
       error: freezed == error
           ? _value.error
           : error // ignore: cast_nullable_to_non_nullable
@@ -347,6 +373,7 @@ class _$CommunityStateImpl implements _CommunityState {
       final List<Post> followingPosts = const [],
       final List<Post> recommendPosts = const [],
       final List<Post> posts = const [],
+      final List<Post> trendingPosts = const [],
       final List<User> followingUsers = const [],
       final List<Topic> trendingTopics = const [],
       final List<Topic> hotTopics = const [],
@@ -361,10 +388,12 @@ class _$CommunityStateImpl implements _CommunityState {
       final List<User> users = const [],
       this.hasMoreFollowing = false,
       this.hasMoreRecommend = false,
+      this.hasMoreTrending = false,
       this.error})
       : _followingPosts = followingPosts,
         _recommendPosts = recommendPosts,
         _posts = posts,
+        _trendingPosts = trendingPosts,
         _followingUsers = followingUsers,
         _trendingTopics = trendingTopics,
         _hotTopics = hotTopics,
@@ -409,6 +438,15 @@ class _$CommunityStateImpl implements _CommunityState {
     if (_posts is EqualUnmodifiableListView) return _posts;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_posts);
+  }
+
+  final List<Post> _trendingPosts;
+  @override
+  @JsonKey()
+  List<Post> get trendingPosts {
+    if (_trendingPosts is EqualUnmodifiableListView) return _trendingPosts;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_trendingPosts);
   }
 
   final List<User> _followingUsers;
@@ -529,11 +567,14 @@ class _$CommunityStateImpl implements _CommunityState {
   @JsonKey()
   final bool hasMoreRecommend;
   @override
+  @JsonKey()
+  final bool hasMoreTrending;
+  @override
   final String? error;
 
   @override
   String toString() {
-    return 'CommunityState(isLoading: $isLoading, isLoadingRecommend: $isLoadingRecommend, followingPosts: $followingPosts, recommendPosts: $recommendPosts, posts: $posts, followingUsers: $followingUsers, trendingTopics: $trendingTopics, hotTopics: $hotTopics, recommendedTopics: $recommendedTopics, topics: $topics, activeChallenges: $activeChallenges, popularChallenges: $popularChallenges, challenges: $challenges, recommendUsers: $recommendUsers, searchResults: $searchResults, comments: $comments, users: $users, hasMoreFollowing: $hasMoreFollowing, hasMoreRecommend: $hasMoreRecommend, error: $error)';
+    return 'CommunityState(isLoading: $isLoading, isLoadingRecommend: $isLoadingRecommend, followingPosts: $followingPosts, recommendPosts: $recommendPosts, posts: $posts, trendingPosts: $trendingPosts, followingUsers: $followingUsers, trendingTopics: $trendingTopics, hotTopics: $hotTopics, recommendedTopics: $recommendedTopics, topics: $topics, activeChallenges: $activeChallenges, popularChallenges: $popularChallenges, challenges: $challenges, recommendUsers: $recommendUsers, searchResults: $searchResults, comments: $comments, users: $users, hasMoreFollowing: $hasMoreFollowing, hasMoreRecommend: $hasMoreRecommend, hasMoreTrending: $hasMoreTrending, error: $error)';
   }
 
   @override
@@ -550,6 +591,8 @@ class _$CommunityStateImpl implements _CommunityState {
             const DeepCollectionEquality()
                 .equals(other._recommendPosts, _recommendPosts) &&
             const DeepCollectionEquality().equals(other._posts, _posts) &&
+            const DeepCollectionEquality()
+                .equals(other._trendingPosts, _trendingPosts) &&
             const DeepCollectionEquality()
                 .equals(other._followingUsers, _followingUsers) &&
             const DeepCollectionEquality()
@@ -575,6 +618,8 @@ class _$CommunityStateImpl implements _CommunityState {
                 other.hasMoreFollowing == hasMoreFollowing) &&
             (identical(other.hasMoreRecommend, hasMoreRecommend) ||
                 other.hasMoreRecommend == hasMoreRecommend) &&
+            (identical(other.hasMoreTrending, hasMoreTrending) ||
+                other.hasMoreTrending == hasMoreTrending) &&
             (identical(other.error, error) || other.error == error));
   }
 
@@ -586,6 +631,7 @@ class _$CommunityStateImpl implements _CommunityState {
         const DeepCollectionEquality().hash(_followingPosts),
         const DeepCollectionEquality().hash(_recommendPosts),
         const DeepCollectionEquality().hash(_posts),
+        const DeepCollectionEquality().hash(_trendingPosts),
         const DeepCollectionEquality().hash(_followingUsers),
         const DeepCollectionEquality().hash(_trendingTopics),
         const DeepCollectionEquality().hash(_hotTopics),
@@ -600,6 +646,7 @@ class _$CommunityStateImpl implements _CommunityState {
         const DeepCollectionEquality().hash(_users),
         hasMoreFollowing,
         hasMoreRecommend,
+        hasMoreTrending,
         error
       ]);
 
@@ -618,6 +665,7 @@ abstract class _CommunityState implements CommunityState {
       final List<Post> followingPosts,
       final List<Post> recommendPosts,
       final List<Post> posts,
+      final List<Post> trendingPosts,
       final List<User> followingUsers,
       final List<Topic> trendingTopics,
       final List<Topic> hotTopics,
@@ -632,6 +680,7 @@ abstract class _CommunityState implements CommunityState {
       final List<User> users,
       final bool hasMoreFollowing,
       final bool hasMoreRecommend,
+      final bool hasMoreTrending,
       final String? error}) = _$CommunityStateImpl;
 
   @override
@@ -644,6 +693,8 @@ abstract class _CommunityState implements CommunityState {
   List<Post> get recommendPosts;
   @override
   List<Post> get posts;
+  @override
+  List<Post> get trendingPosts;
   @override
   List<User> get followingUsers;
   @override
@@ -672,6 +723,8 @@ abstract class _CommunityState implements CommunityState {
   bool get hasMoreFollowing;
   @override
   bool get hasMoreRecommend;
+  @override
+  bool get hasMoreTrending;
   @override
   String? get error;
   @override

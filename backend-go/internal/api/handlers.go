@@ -1,35 +1,39 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
-	"fittracker/internal/models"
-	"fittracker/internal/services"
+	"gymates/internal/models"
+	"gymates/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Handlers struct {
-	userService      *services.UserService
-	trainingService  *services.TrainingService
-	communityService *services.CommunityService
-	aiService        *services.AIService
+	userService     *services.UserService
+	authService     *services.AuthService
+	trainingService *services.TrainingService
+	aiService       *services.AIService
+	messageService  *services.MessageService
+	teamService     *services.TeamService
 }
 
 func NewHandlers(
 	userService *services.UserService,
+	authService *services.AuthService,
 	trainingService *services.TrainingService,
-	communityService *services.CommunityService,
 	aiService *services.AIService,
+	messageService *services.MessageService,
+	teamService *services.TeamService,
 ) *Handlers {
 	return &Handlers{
-		userService:      userService,
-		trainingService:  trainingService,
-		communityService: communityService,
-		aiService:        aiService,
+		userService:     userService,
+		authService:     authService,
+		trainingService: trainingService,
+		aiService:       aiService,
+		messageService:  messageService,
+		teamService:     teamService,
 	}
 }
 
@@ -47,8 +51,21 @@ func (h *Handlers) Register(c *gin.Context) {
 		return
 	}
 
+	userIDUint, err := strconv.ParseUint(user.ID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	token, err := h.authService.GenerateToken(uint(userIDUint))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成token失败"})
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "注册成功",
+		"token":   token,
 		"user":    user,
 	})
 }
@@ -66,8 +83,17 @@ func (h *Handlers) Login(c *gin.Context) {
 		return
 	}
 
-	// 生成JWT token (这里需要实现JWT生成逻辑)
-	token := "mock-jwt-token"
+	userIDUint, err := strconv.ParseUint(user.ID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	token, err := h.authService.GenerateToken(uint(userIDUint))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "生成token失败"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "登录成功",
@@ -79,7 +105,13 @@ func (h *Handlers) Login(c *gin.Context) {
 func (h *Handlers) GetProfile(c *gin.Context) {
 	userID := c.GetString("user_id")
 
-	user, err := h.userService.GetByID(userID)
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	user, err := h.userService.GetByID(uint(userIDUint))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 		return
@@ -97,7 +129,13 @@ func (h *Handlers) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	err := h.userService.UpdateProfile(userID, &req)
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	err = h.userService.UpdateProfile(uint(userIDUint), &req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -108,477 +146,26 @@ func (h *Handlers) UpdateProfile(c *gin.Context) {
 	})
 }
 
-func (h *Handlers) UploadAvatar(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	file, err := c.FormFile("avatar")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请选择头像文件"})
-		return
-	}
-
-	// 这里需要实现文件上传逻辑
-	avatarURL := "/uploads/avatars/" + file.Filename
-	err = h.userService.UploadAvatar(userID, avatarURL)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message":    "头像上传成功",
-		"avatar_url": avatarURL,
-	})
-}
-
 // 训练相关API
 func (h *Handlers) GetTodayPlan(c *gin.Context) {
 	userID := c.GetString("user_id")
 
-	plan, err := h.trainingService.GetTodayPlan(userID)
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "今日无训练计划"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	plan, err := h.trainingService.GetTodayPlan(uint(userIDUint))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"plan": plan})
 }
 
-func (h *Handlers) GetHistoryPlans(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-
-	plans, total, err := h.trainingService.GetHistoryPlans(userID, page, limit)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"plans": plans,
-		"total": total,
-		"page":  page,
-		"limit": limit,
-	})
-}
-
-func (h *Handlers) CreatePlan(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	var req models.CreatePlanRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	plan, err := h.trainingService.CreatePlan(&models.TrainingPlan{
-		UserID:      userID,
-		Name:        req.Name,
-		Description: req.Description,
-		Date:        time.Now(),
-	})
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "训练计划创建成功",
-		"plan":    plan,
-	})
-}
-
-func (h *Handlers) UpdatePlan(c *gin.Context) {
-	planID := c.Param("id")
-
-	var req models.UpdatePlanRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	err := h.trainingService.UpdatePlan(planID, &models.TrainingPlan{
-		Name:        req.Name,
-		Description: req.Description,
-	})
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "训练计划更新成功",
-	})
-}
-
-func (h *Handlers) DeletePlan(c *gin.Context) {
-	planID := c.Param("id")
-
-	err := h.trainingService.DeletePlan(planID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "训练计划删除成功"})
-}
-
 func (h *Handlers) GenerateAIPlan(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	var req models.GenerateAIPlanRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// 转换请求类型
-	trainingReq := &models.GenerateTrainingPlanRequest{
-		Goal:       req.Goal,
-		Duration:   req.Duration,
-		Difficulty: req.Difficulty,
-		Equipment:  req.Equipment,
-		FocusAreas: req.FocusAreas,
-	}
-	
-	plan, err := h.trainingService.GenerateAIPlan(userID, trainingReq)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"message": "AI训练计划生成成功",
-		"plan":    plan,
-	})
-}
-
-func (h *Handlers) CompleteExercise(c *gin.Context) {
-	userID := c.GetString("user_id")
-	exerciseID := c.Param("id")
-
-	var req models.CompleteExerciseRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	err := h.trainingService.CompleteExercise(exerciseID, userID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "动作完成记录成功"})
-}
-
-func (h *Handlers) CompleteWorkout(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	var req models.CompleteWorkoutRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	err := h.trainingService.CompleteWorkout(req.PlanID, userID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "训练完成记录成功"})
-}
-
-// 社区相关API
-func (h *Handlers) GetFollowingPosts(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-
-	posts, hasMore, err := h.communityService.GetFollowingPosts(userID, page, limit, "")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"posts":    posts,
-		"has_more": hasMore,
-		"page":     page,
-		"limit":    limit,
-	})
-}
-
-func (h *Handlers) GetRecommendPosts(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-
-	posts, hasMore, err := h.communityService.GetRecommendPosts(userID, page, limit, "")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"posts":    posts,
-		"has_more": hasMore,
-		"page":     page,
-		"limit":    limit,
-	})
-}
-
-func (h *Handlers) CreatePost(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	var req models.CreatePostRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	post, err := h.communityService.CreatePost(&models.Post{
-		UserID:      userID,
-		Content:     req.Content,
-		Type:        req.Type,
-		Images:      req.Images,
-		VideoURL:    req.VideoURL,
-		Tags:        req.Tags,
-		Location:    req.Location,
-		WorkoutData: req.WorkoutData,
-	})
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "帖子发布成功",
-		"post":    post,
-	})
-}
-
-func (h *Handlers) GetPost(c *gin.Context) {
-	postID := c.Param("id")
-
-	post, err := h.communityService.GetPost(postID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "帖子不存在"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"post": post})
-}
-
-func (h *Handlers) UpdatePost(c *gin.Context) {
-	userID := c.GetString("user_id")
-	postID := c.Param("id")
-
-	var req models.UpdatePostRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// UpdatePost 方法不存在，暂时返回错误
-	_ = userID
-	_ = postID
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "更新帖子功能暂未实现"})
-	return
-}
-
-func (h *Handlers) DeletePost(c *gin.Context) {
-	userID := c.GetString("user_id")
-	postID := c.Param("id")
-
-	// DeletePost 方法不存在，暂时返回错误
-	_ = userID
-	_ = postID
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "删除帖子功能暂未实现"})
-	return
-}
-
-func (h *Handlers) LikePost(c *gin.Context) {
-	userID := c.GetString("user_id")
-	postID := c.Param("id")
-
-	err := h.communityService.LikePost(postID, userID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "操作成功"})
-}
-
-func (h *Handlers) CommentPost(c *gin.Context) {
-	userID := c.GetString("user_id")
-	postID := c.Param("id")
-
-	var req models.CreateCommentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	comment, err := h.communityService.CreateComment(postID, userID, req.Content)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "评论成功",
-		"comment": comment,
-	})
-}
-
-func (h *Handlers) SharePost(c *gin.Context) {
-	userID := c.GetString("user_id")
-	postID := c.Param("id")
-
-	// SharePost 方法不存在，暂时返回错误
-	_ = userID
-	_ = postID
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "分享帖子功能暂未实现"})
-	return
-}
-
-func (h *Handlers) GetTrendingTopics(c *gin.Context) {
-	topics, err := h.communityService.GetTrendingTopics(10)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"topics": topics})
-}
-
-func (h *Handlers) FollowUser(c *gin.Context) {
-	userID := c.GetString("user_id")
-	followUserID := c.Param("id")
-
-	err := h.communityService.FollowUser(userID, followUserID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "关注成功"})
-}
-
-func (h *Handlers) UnfollowUser(c *gin.Context) {
-	userID := c.GetString("user_id")
-	followUserID := c.Param("id")
-
-	err := h.communityService.UnfollowUser(userID, followUserID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "取消关注成功"})
-}
-
-// 消息相关API
-func (h *Handlers) GetChats(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	// MessageService 暂未实现
-	_ = userID
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "消息功能暂未实现"})
-	return
-}
-
-func (h *Handlers) GetChatMessages(c *gin.Context) {
-	userID := c.GetString("user_id")
-	chatID := c.Param("id")
-
-	// MessageService 暂未实现
-	_ = userID
-	_ = chatID
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "消息功能暂未实现"})
-	return
-}
-
-func (h *Handlers) CreateChat(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	var req models.CreateChatRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// MessageService 暂未实现
-	_ = userID
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "消息功能暂未实现"})
-	return
-}
-
-func (h *Handlers) SendMessage(c *gin.Context) {
-	userID := c.GetString("user_id")
-	chatID := c.Param("id")
-
-	var req models.SendMessageRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// MessageService 暂未实现
-	_ = userID
-	_ = chatID
-	_ = req
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "消息功能暂未实现"})
-	return
-}
-
-func (h *Handlers) GetNotifications(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	// MessageService 暂未实现
-	_ = userID
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "消息功能暂未实现"})
-	return
-}
-
-func (h *Handlers) MarkNotificationRead(c *gin.Context) {
-	userID := c.GetString("user_id")
-	notificationID := c.Param("id")
-
-	// MessageService 暂未实现
-	_ = userID
-	_ = notificationID
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "消息功能暂未实现"})
-	return
-}
-
-func (h *Handlers) ClearNotifications(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	// MessageService 暂未实现
-	_ = userID
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "消息功能暂未实现"})
-	return
-}
-
-func (h *Handlers) GetSystemMessages(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	// MessageService 暂未实现
-	_ = userID
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "消息功能暂未实现"})
-	return
-}
-
-// AI相关API
-func (h *Handlers) GenerateTrainingPlan(c *gin.Context) {
 	userID := c.GetString("user_id")
 
 	var req models.GenerateTrainingPlanRequest
@@ -587,519 +174,263 @@ func (h *Handlers) GenerateTrainingPlan(c *gin.Context) {
 		return
 	}
 
-	// 转换请求类型
-	workoutReq := services.WorkoutPlanRequest{
-		Goal:        req.Goal,
-		Duration:    req.Duration,
-		Difficulty:  req.Difficulty,
-		Experience:  "中级", // 默认值
-		Equipment:   "基础器械", // 默认值
-		TimePerDay:  req.Duration,
-		Preferences: "全身训练", // 默认值
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
 	}
-	
-	// 记录用户ID用于日志
-	_ = userID
-	
-	plan, err := h.aiService.GenerateTrainingPlan(workoutReq)
+
+	plan, err := h.trainingService.GenerateAIPlan(uint(userIDUint), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"plan": plan})
+}
+
+// 消息相关API
+func (h *Handlers) GetChats(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+		return
+	}
+
+	chats, err := h.messageService.GetChats(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "AI训练计划生成成功",
-		"plan":    plan,
+		"chats": chats,
 	})
 }
 
-func (h *Handlers) GenerateNutritionPlan(c *gin.Context) {
+func (h *Handlers) CreateChat(c *gin.Context) {
 	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+		return
+	}
 
-	var req models.GenerateNutritionPlanRequest
+	var req models.CreateChatRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// GenerateNutritionPlan 方法不存在，暂时返回错误
-	_ = userID
-	_ = req
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "营养计划功能暂未实现"})
-	return
-}
-
-func (h *Handlers) AIChat(c *gin.Context) {
-	userID := c.GetString("user_id")
-
-	var req models.AIChatRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
 		return
 	}
 
-	// AIChat 方法不存在，暂时返回错误
-	_ = userID
-	_ = req
-	c.JSON(http.StatusNotImplemented, gin.H{"error": "AI聊天功能暂未实现"})
-	return
-}
-
-// StartWorkout 开始训练
-func (h *Handlers) StartWorkout(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
+	chat, err := h.messageService.CreateChat(uint(userIDUint), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-
-	var req struct {
-		PlanID string `json:"plan_id" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// 开始训练逻辑
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "训练开始！",
-		"data": gin.H{
-			"workout_id": fmt.Sprintf("workout_%d", time.Now().Unix()),
-			"start_time": time.Now(),
-		},
-	})
-}
-
-// GetTrainingStats 获取训练统计
-func (h *Handlers) GetTrainingStats(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
-		return
-	}
-
-	// 获取查询参数
-	period := c.DefaultQuery("period", "week") // week, month, year
-
-	stats := gin.H{
-		"current_streak":      7,
-		"total_calories_burned": 1500,
-		"total_workouts":      12,
-		"period":              period,
-		"workouts_this_period": 3,
-		"calories_this_period": 450,
-		"avg_duration":        45,
-		"favorite_exercise":   "俯卧撑",
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    stats,
-	})
-}
-
-// GetAchievements 获取成就列表
-func (h *Handlers) GetAchievements(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
-		return
-	}
-
-	achievements := []gin.H{
-		{
-			"id":          "achievement_1",
-			"name":        "训练新手",
-			"description": "完成第一次训练",
-			"icon":        "🏆",
-			"is_claimed":  true,
-			"points":      10,
-		},
-		{
-			"id":          "achievement_2",
-			"name":        "坚持一周",
-			"description": "连续训练7天",
-			"icon":        "🔥",
-			"is_claimed":  false,
-			"points":      50,
-		},
-		{
-			"id":          "achievement_3",
-			"name":        "卡路里燃烧者",
-			"description": "单次训练消耗500卡路里",
-			"icon":        "💪",
-			"is_claimed":  false,
-			"points":      30,
-		},
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"achievements": achievements,
-		},
-	})
-}
-
-// ClaimAchievement 领取成就奖励
-func (h *Handlers) ClaimAchievement(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
-		return
-	}
-
-	achievementID := c.Param("id")
-	if achievementID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "成就ID不能为空"})
-		return
-	}
-
-	// 领取成就逻辑
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "成就奖励领取成功！",
-		"data": gin.H{
-			"achievement_id": achievementID,
-			"points_earned":  50,
-		},
-	})
-}
-
-// GetCheckIns 获取打卡记录
-func (h *Handlers) GetCheckIns(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
-		return
-	}
-
-	// 获取查询参数
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "30"))
-
-	checkIns := []gin.H{
-		{
-			"id":          "checkin_1",
-			"date":        time.Now().AddDate(0, 0, -1),
-			"type":        "训练",
-			"content":     "完成了今天的训练计划",
-			"images":      []string{},
-			"location":    "健身房",
-			"created_at":  time.Now().AddDate(0, 0, -1),
-		},
-		{
-			"id":          "checkin_2",
-			"date":        time.Now().AddDate(0, 0, -2),
-			"type":        "日常",
-			"content":     "今天心情很好",
-			"images":      []string{},
-			"location":    "家里",
-			"created_at":  time.Now().AddDate(0, 0, -2),
-		},
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"checkins":    checkIns,
-			"total":       len(checkIns),
-			"page":        page,
-			"limit":       limit,
-			"total_page":  1,
-		},
-	})
-}
-
-// CreateCheckIn 创建打卡记录
-func (h *Handlers) CreateCheckIn(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
-		return
-	}
-
-	var req struct {
-		Type     string    `json:"type" binding:"required"`
-		Content  string    `json:"content"`
-		Images   []string  `json:"images"`
-		Location string    `json:"location"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	checkIn := gin.H{
-		"id":         fmt.Sprintf("checkin_%d", time.Now().Unix()),
-		"user_id":    userID,
-		"date":       time.Now(),
-		"type":       req.Type,
-		"content":    req.Content,
-		"images":     req.Images,
-		"location":   req.Location,
-		"created_at": time.Now(),
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"success": true,
-		"message": "打卡成功！",
-		"data":    checkIn,
+		"chat": chat,
 	})
 }
 
-// GetProfileActivities 获取用户活动记录
-func (h *Handlers) GetProfileActivities(c *gin.Context) {
+func (h *Handlers) SendMessage(c *gin.Context) {
 	userID := c.GetString("user_id")
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
 		return
 	}
 
-	activities := []gin.H{
-		{
-			"id":          "activity_1",
-			"type":        "训练",
-			"title":       "完成今日训练",
-			"description": "完成了30分钟的力量训练",
-			"date":        time.Now().AddDate(0, 0, -1),
-			"points":      50,
-		},
-		{
-			"id":          "activity_2",
-			"type":        "打卡",
-			"title":       "连续打卡7天",
-			"description": "获得坚持一周成就",
-			"date":        time.Now().AddDate(0, 0, -2),
-			"points":      100,
-		},
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    activities,
-	})
-}
-
-// GetCurrentPlan 获取当前训练计划
-func (h *Handlers) GetCurrentPlan(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
+	chatIDStr := c.Param("id")
+	chatID, err := strconv.ParseUint(chatIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的聊天ID"})
 		return
 	}
 
-	plan := gin.H{
-		"id":          "plan_current",
-		"name":        "减脂塑形计划",
-		"description": "30天减脂塑形训练计划",
-		"duration":    30,
-		"progress":    15,
-		"start_date":  time.Now().AddDate(0, 0, -15),
-		"end_date":    time.Now().AddDate(0, 0, 15),
-		"exercises": []gin.H{
-			{
-				"name":     "俯卧撑",
-				"sets":     3,
-				"reps":     15,
-				"completed": true,
-			},
-			{
-				"name":     "深蹲",
-				"sets":     3,
-				"reps":     20,
-				"completed": false,
-			},
-		},
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    plan,
-	})
-}
-
-// GetPlanHistory 获取训练计划历史
-func (h *Handlers) GetPlanHistory(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
 		return
 	}
 
-	history := []gin.H{
-		{
-			"id":          "plan_1",
-			"name":        "增肌训练计划",
-			"duration":    28,
-			"completed":  true,
-			"start_date":  time.Now().AddDate(0, 0, -60),
-			"end_date":    time.Now().AddDate(0, 0, -32),
-			"rating":      4,
-		},
-		{
-			"id":          "plan_2",
-			"name":        "有氧训练计划",
-			"duration":    14,
-			"completed":  true,
-			"start_date":  time.Now().AddDate(0, 0, -45),
-			"end_date":    time.Now().AddDate(0, 0, -31),
-			"rating":      5,
-		},
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    history,
-	})
-}
-
-// GetNutritionPlan 获取营养计划
-func (h *Handlers) GetNutritionPlan(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
-		return
-	}
-
-	nutritionPlan := gin.H{
-		"id":          "nutrition_1",
-		"goal":        "减脂",
-		"daily_calories": 1800,
-		"protein":     120,
-		"carbs":       180,
-		"fat":         60,
-		"meals": []gin.H{
-			{
-				"meal": "早餐",
-				"calories": 400,
-				"foods": []string{"燕麦", "牛奶", "香蕉"},
-			},
-			{
-				"meal": "午餐",
-				"calories": 600,
-				"foods": []string{"鸡胸肉", "米饭", "蔬菜"},
-			},
-			{
-				"meal": "晚餐",
-				"calories": 500,
-				"foods": []string{"鱼肉", "蔬菜沙拉"},
-			},
-			{
-				"meal": "加餐",
-				"calories": 300,
-				"foods": []string{"坚果", "酸奶"},
-			},
-		},
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    nutritionPlan,
-	})
-}
-
-// UpdateNutritionPlan 更新营养计划
-func (h *Handlers) UpdateNutritionPlan(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
-		return
-	}
-
-	var req struct {
-		Goal         string `json:"goal"`
-		DailyCalories int   `json:"daily_calories"`
-		Protein      int   `json:"protein"`
-		Carbs        int   `json:"carbs"`
-		Fat          int   `json:"fat"`
-	}
-
+	var req models.SendMessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "营养计划更新成功！",
-		"data": gin.H{
-			"goal":           req.Goal,
-			"daily_calories": req.DailyCalories,
-			"protein":        req.Protein,
-			"carbs":          req.Carbs,
-			"fat":            req.Fat,
-		},
+	message, err := h.messageService.SendMessage(uint(chatID), uint(userIDUint), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": message,
 	})
 }
 
-// GetProfileSettings 获取用户设置
-func (h *Handlers) GetProfileSettings(c *gin.Context) {
+func (h *Handlers) GetNotifications(c *gin.Context) {
 	userID := c.GetString("user_id")
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
 		return
 	}
 
-	settings := gin.H{
-		"notifications": gin.H{
-			"workout_reminder": true,
-			"achievement":      true,
-			"social":          false,
-		},
-		"privacy": gin.H{
-			"profile_public":  true,
-			"show_activities": true,
-			"show_stats":     false,
-		},
-		"units": gin.H{
-			"weight": "kg",
-			"height": "cm",
-			"distance": "km",
-		},
-		"language": "zh-CN",
-		"theme":    "light",
+	notifications, err := h.messageService.GetNotifications(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    settings,
+		"notifications": notifications,
 	})
 }
 
-// UpdateProfileSetting 更新用户设置
-func (h *Handlers) UpdateProfileSetting(c *gin.Context) {
+// 团队相关API
+func (h *Handlers) CreateTeam(c *gin.Context) {
 	userID := c.GetString("user_id")
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权访问"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
 		return
 	}
 
-	settingKey := c.Param("key")
-	if settingKey == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "设置键不能为空"})
-		return
-	}
-
-	var req struct {
-		Value interface{} `json:"value"`
-	}
-
+	var req models.CreateTeamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "设置更新成功！",
-		"data": gin.H{
-			"key":   settingKey,
-			"value": req.Value,
-		},
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	team, err := h.teamService.CreateTeam(uint(userIDUint), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"team": team,
 	})
+}
+
+func (h *Handlers) GetTeams(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+	teams, hasMore, err := h.teamService.GetTeams(page, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"teams":    teams,
+		"has_more": hasMore,
+		"page":     page,
+		"limit":    limit,
+	})
+}
+
+func (h *Handlers) GetTeamByID(c *gin.Context) {
+	teamIDStr := c.Param("id")
+	teamID, err := strconv.ParseUint(teamIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的团队ID"})
+		return
+	}
+
+	team, err := h.teamService.GetTeamByID(uint(teamID))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"team": team,
+	})
+}
+
+func (h *Handlers) JoinTeam(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+		return
+	}
+
+	teamIDStr := c.Param("id")
+	teamID, err := strconv.ParseUint(teamIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的团队ID"})
+		return
+	}
+
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	var req models.JoinTeamRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = h.teamService.JoinTeam(uint(teamID), uint(userIDUint), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "成功加入团队",
+	})
+}
+
+// 占位符方法 - 暂时返回简单响应
+func (h *Handlers) UploadAvatar(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "头像上传功能开发中"})
+}
+
+func (h *Handlers) GetHistoryPlans(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"plans": []interface{}{}})
+}
+
+func (h *Handlers) CreatePlan(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "创建训练计划功能开发中"})
+}
+
+func (h *Handlers) UpdatePlan(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "更新训练计划功能开发中"})
+}
+
+func (h *Handlers) DeletePlan(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "删除训练计划功能开发中"})
+}
+
+func (h *Handlers) GetChat(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"chat": nil})
+}
+
+func (h *Handlers) GetMessages(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"messages": []interface{}{}})
+}
+
+func (h *Handlers) MarkMessageAsRead(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "标记已读功能开发中"})
+}
+
+func (h *Handlers) MarkNotificationAsRead(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "标记通知已读功能开发中"})
 }

@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"fittracker/internal/models"
-	"fittracker/internal/services"
+	"gymates/internal/models"
+	"gymates/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,21 +38,22 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	user := &models.User{
+	// 使用Register方法创建用户
+	registerReq := &models.RegisterRequest{
 		Username: req.Username,
 		Email:    req.Email,
 		Password: req.Password,
 		Nickname: req.Nickname,
-		Phone:    req.Phone,
 	}
 
-	if err := h.userService.CreateUser(user); err != nil {
+	user, err := h.userService.Register(registerReq)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// 生成 JWT token
-	token, err := h.authService.GenerateToken(user.ID)
+	token, err := h.authService.GenerateToken(user.UID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
@@ -84,7 +85,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	// 生成 JWT token
-	token, err := h.authService.GenerateToken(user.ID)
+	token, err := h.authService.GenerateToken(user.UID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return

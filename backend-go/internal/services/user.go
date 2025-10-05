@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"fittracker/internal/models"
+	"gymates/internal/models"
 
 	"github.com/go-redis/redis/v8"
 	"golang.org/x/crypto/bcrypt"
@@ -39,14 +39,18 @@ func (s *UserService) Register(req *models.RegisterRequest) (*models.User, error
 		return nil, fmt.Errorf("密码加密失败: %w", err)
 	}
 
-	// 创建用户
+	// 创建用户对象
 	user := &models.User{
-		Username: req.Username,
-		Email:    req.Email,
-		Password: string(hashedPassword),
-		Nickname: req.Nickname,
+		ID:        fmt.Sprintf("user_%d", time.Now().Unix()),
+		Username:  req.Username,
+		Email:     req.Email,
+		Password:  string(hashedPassword),
+		Nickname:  req.Nickname,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
+	// 使用 GORM 创建用户
 	if err := s.db.Create(user).Error; err != nil {
 		return nil, fmt.Errorf("创建用户失败: %w", err)
 	}
@@ -57,7 +61,8 @@ func (s *UserService) Register(req *models.RegisterRequest) (*models.User, error
 // Login 用户登录
 func (s *UserService) Login(req *models.LoginRequest) (*models.User, error) {
 	var user models.User
-	if err := s.db.Where("username = ?", req.Username).First(&user).Error; err != nil {
+	// 支持用户名、邮箱、手机号登录
+	if err := s.db.Where("username = ? OR email = ? OR phone = ?", req.Username, req.Username, req.Username).First(&user).Error; err != nil {
 		return nil, errors.New("用户名或密码错误")
 	}
 
@@ -70,7 +75,7 @@ func (s *UserService) Login(req *models.LoginRequest) (*models.User, error) {
 }
 
 // GetByID 根据ID获取用户
-func (s *UserService) GetByID(userID string) (*models.User, error) {
+func (s *UserService) GetByID(userID uint) (*models.User, error) {
 	var user models.User
 	if err := s.db.First(&user, userID).Error; err != nil {
 		return nil, fmt.Errorf("用户不存在: %w", err)
@@ -79,13 +84,11 @@ func (s *UserService) GetByID(userID string) (*models.User, error) {
 }
 
 // UpdateProfile 更新用户资料
-func (s *UserService) UpdateProfile(userID string, req *models.UpdateProfileRequest) error {
+func (s *UserService) UpdateProfile(userID uint, req *models.UpdateProfileRequest) error {
 	updates := map[string]interface{}{
 		"nickname": req.Nickname,
 		"bio":      req.Bio,
 		"gender":   req.Gender,
-		"height":   req.Height,
-		"weight":   req.Weight,
 	}
 
 	if req.Birthday != "" {
@@ -98,7 +101,7 @@ func (s *UserService) UpdateProfile(userID string, req *models.UpdateProfileRequ
 }
 
 // UploadAvatar 上传头像
-func (s *UserService) UploadAvatar(userID string, avatarURL string) error {
+func (s *UserService) UploadAvatar(userID uint, avatarURL string) error {
 	return s.db.Model(&models.User{}).Where("id = ?", userID).Update("avatar", avatarURL).Error
 }
 
@@ -176,6 +179,7 @@ func (s *UserService) FollowUser(userID, followingID uint) error {
 
 	// 创建关注关系
 	follow = models.Follow{
+		ID:          fmt.Sprintf("follow_%d_%d", userID, followingID),
 		FollowerID:  fmt.Sprintf("%d", userID),
 		FollowingID: fmt.Sprintf("%d", followingID),
 	}
@@ -218,7 +222,7 @@ func (s *UserService) GetFollowers(userID uint, page, limit int) ([]models.User,
 
 	// 获取关注者列表
 	if err := s.db.Table("users").
-		Joins("JOIN follows ON users.id = follows.user_id").
+		Joins("JOIN follows ON users.uid = follows.user_id").
 		Where("follows.following_id = ?", userID).
 		Offset(offset).
 		Limit(limit).
@@ -243,7 +247,7 @@ func (s *UserService) GetFollowing(userID uint, page, limit int) ([]models.User,
 
 	// 获取关注列表
 	if err := s.db.Table("users").
-		Joins("JOIN follows ON users.id = follows.following_id").
+		Joins("JOIN follows ON users.uid = follows.following_id").
 		Where("follows.user_id = ?", userID).
 		Offset(offset).
 		Limit(limit).
@@ -270,8 +274,6 @@ func (s *UserService) cacheUser(user *models.User) {
 		"avatar":      user.Avatar,
 		"bio":         user.Bio,
 		"gender":      user.Gender,
-		"height":      user.Height,
-		"weight":      user.Weight,
 		"is_verified": user.IsVerified,
 		"created_at":  user.CreatedAt,
 		"updated_at":  user.UpdatedAt,

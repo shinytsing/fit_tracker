@@ -1,0 +1,510 @@
+package services
+
+import (
+	"errors"
+	"mime/multipart"
+	"strconv"
+	"time"
+
+	"gymates/internal/models"
+
+	"gorm.io/gorm"
+)
+
+// MessageService 消息服务
+type MessageService struct {
+	db *gorm.DB
+}
+
+// NewMessageService 创建消息服务
+func NewMessageService(db *gorm.DB) *MessageService {
+	return &MessageService{
+		db: db,
+	}
+}
+
+// GetChats 获取聊天列表
+func (ms *MessageService) GetChats(userID string, page, limit int) ([]models.Chat, int64, error) {
+	var chats []models.Chat
+	var total int64
+
+	offset := (page - 1) * limit
+
+	// 查询用户参与的聊天
+	if err := ms.db.Model(&models.Chat{}).
+		Where("participants @> ?", `["`+userID+`"]`).
+		Count(&total).
+		Offset(offset).
+		Limit(limit).
+		Order("last_message_time DESC").
+		Find(&chats).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return chats, total, nil
+}
+
+// GetChatMessages 获取聊天消息
+func (ms *MessageService) GetChatMessages(chatID, userID string, page, limit int, lastMessageID string) ([]models.Message, bool, error) {
+	var messages []models.Message
+
+	query := ms.db.Where("chat_id = ?", chatID).Order("created_at DESC")
+
+	if lastMessageID != "" {
+		query = query.Where("id < ?", lastMessageID)
+	}
+
+	if err := query.Limit(limit + 1).Find(&messages).Error; err != nil {
+		return nil, false, err
+	}
+
+	hasMore := len(messages) > limit
+	if hasMore {
+		messages = messages[:limit]
+	}
+
+	// 反转消息顺序
+	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
+		messages[i], messages[j] = messages[j], messages[i]
+	}
+
+	return messages, hasMore, nil
+}
+
+// SendMessage 发送消息
+func (ms *MessageService) SendMessage(message *models.Message) (*models.Message, error) {
+	if err := ms.db.Create(message).Error; err != nil {
+		return nil, err
+	}
+
+	// 更新聊天最后消息
+	ms.db.Model(&models.Chat{}).
+		Where("id = ?", message.ChatID).
+		Updates(map[string]interface{}{
+			"last_message":      message.Content,
+			"last_message_time": time.Now(),
+		})
+
+	return message, nil
+}
+
+// MarkMessagesAsRead 标记消息为已读
+func (ms *MessageService) MarkMessagesAsRead(chatID, userID string) error {
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		return err
+	}
+
+	return ms.db.Model(&models.Message{}).
+		Where("chat_id = ? AND sender_id != ? AND status != ?", chatID, userIDUint, models.MessageStatusRead).
+		Update("status", models.MessageStatusRead).Error
+}
+
+// UpdateMessageStatus 更新消息状态
+func (ms *MessageService) UpdateMessageStatus(messageID, userID string, status models.MessageStatus) error {
+	return ms.db.Model(&models.Message{}).
+		Where("id = ?", messageID).
+		Update("status", status).Error
+}
+
+// DeleteMessage 删除消息
+func (ms *MessageService) DeleteMessage(messageID, userID string) error {
+	return ms.db.Delete(&models.Message{}, "id = ?", messageID).Error
+}
+
+// GetNotifications 获取通知列表
+func (ms *MessageService) GetNotifications(userID string, page, limit int, unreadOnly bool) ([]models.Notification, int64, error) {
+	var notifications []models.Notification
+	var total int64
+
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	query := ms.db.Where("user_id = ?", userIDUint)
+	if unreadOnly {
+		query = query.Where("is_read = ?", false)
+	}
+
+	if err := query.Count(&total).Offset((page - 1) * limit).Limit(limit).
+		Order("created_at DESC").Find(&notifications).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return notifications, total, nil
+}
+
+// MarkNotificationAsRead 标记通知为已读
+func (ms *MessageService) MarkNotificationAsRead(notificationID, userID string) error {
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		return err
+	}
+
+	return ms.db.Model(&models.Notification{}).
+		Where("id = ? AND user_id = ?", notificationID, userIDUint).
+		Updates(map[string]interface{}{
+			"is_read": true,
+			"read_at": time.Now(),
+		}).Error
+}
+
+// MarkAllNotificationsAsRead 标记所有通知为已读
+func (ms *MessageService) MarkAllNotificationsAsRead(userID string) error {
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		return err
+	}
+
+	return ms.db.Model(&models.Notification{}).
+		Where("user_id = ? AND is_read = ?", userIDUint, false).
+		Updates(map[string]interface{}{
+			"is_read": true,
+			"read_at": time.Now(),
+		}).Error
+}
+
+// GetGroups 获取群聊列表
+func (ms *MessageService) GetGroups(userID string, page, limit int) ([]models.Group, int64, error) {
+	var groups []models.Group
+	var total int64
+
+	if err := ms.db.Model(&models.Group{}).
+		Where("members @> ?", `["`+userID+`"]`).
+		Count(&total).
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Order("created_at DESC").
+		Find(&groups).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return groups, total, nil
+}
+
+// CreateGroup 创建群聊
+func (ms *MessageService) CreateGroup(group *models.Group) (*models.Group, error) {
+	if err := ms.db.Create(group).Error; err != nil {
+		return nil, err
+	}
+	return group, nil
+}
+
+// JoinGroup 加入群聊
+func (ms *MessageService) JoinGroup(groupID, userID string) error {
+	var group models.Group
+	if err := ms.db.First(&group, "id = ?", groupID).Error; err != nil {
+		return err
+	}
+
+	// 检查用户是否已在群中
+	for _, member := range group.Members {
+		if member == userID {
+			return errors.New("用户已在群中")
+		}
+	}
+
+	group.Members = append(group.Members, userID)
+	return ms.db.Save(&group).Error
+}
+
+// LeaveGroup 退出群聊
+func (ms *MessageService) LeaveGroup(groupID, userID string) error {
+	var group models.Group
+	if err := ms.db.First(&group, "id = ?", groupID).Error; err != nil {
+		return err
+	}
+
+	// 从成员列表中移除用户
+	for i, member := range group.Members {
+		if member == userID {
+			group.Members = append(group.Members[:i], group.Members[i+1:]...)
+			break
+		}
+	}
+
+	return ms.db.Save(&group).Error
+}
+
+// UploadMedia 上传媒体文件
+func (ms *MessageService) UploadMedia(userID string, file multipart.File, header *multipart.FileHeader, fileType string) (*models.MediaFile, error) {
+	// 这里应该实现文件上传逻辑
+	// 为了简化，返回一个模拟的MediaFile
+	mediaFile := &models.MediaFile{
+		UserID:   parseUserIDFromString(userID),
+		Type:     fileType,
+		URL:      "/uploads/" + header.Filename,
+		FileName: header.Filename,
+		FileSize: header.Size,
+		MimeType: header.Header.Get("Content-Type"),
+	}
+
+	if err := ms.db.Create(mediaFile).Error; err != nil {
+		return nil, err
+	}
+
+	return mediaFile, nil
+}
+
+// UploadVideo 上传视频文件
+func (ms *MessageService) UploadVideo(userID string, file multipart.File, header *multipart.FileHeader, thumbnailFile *multipart.FileHeader, duration int) (*models.MediaFile, error) {
+	// 这里应该实现视频上传逻辑
+	mediaFile := &models.MediaFile{
+		UserID:   parseUserIDFromString(userID),
+		Type:     "video",
+		URL:      "/uploads/videos/" + header.Filename,
+		FileName: header.Filename,
+		FileSize: header.Size,
+		MimeType: header.Header.Get("Content-Type"),
+	}
+
+	if err := ms.db.Create(mediaFile).Error; err != nil {
+		return nil, err
+	}
+
+	return mediaFile, nil
+}
+
+// GetMessageStats 获取消息统计
+func (ms *MessageService) GetMessageStats(userID string) (map[string]interface{}, error) {
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	var totalMessages int64
+	var unreadMessages int64
+	var totalChats int64
+
+	ms.db.Model(&models.Message{}).Where("sender_id = ?", userIDUint).Count(&totalMessages)
+	ms.db.Model(&models.Message{}).Where("sender_id != ? AND status != ?", userIDUint, models.MessageStatusRead).Count(&unreadMessages)
+	ms.db.Model(&models.Chat{}).Where("participants @> ?", `["`+userID+`"]`).Count(&totalChats)
+
+	return map[string]interface{}{
+		"total_messages":  totalMessages,
+		"unread_messages": unreadMessages,
+		"total_chats":     totalChats,
+	}, nil
+}
+
+// SearchMessages 搜索消息
+func (ms *MessageService) SearchMessages(userID, query, chatID string, page, limit int) ([]models.Message, int64, error) {
+	var messages []models.Message
+	var total int64
+
+	dbQuery := ms.db.Where("content LIKE ?", "%"+query+"%")
+
+	if chatID != "" {
+		dbQuery = dbQuery.Where("chat_id = ?", chatID)
+	}
+
+	if err := dbQuery.Count(&total).Offset((page - 1) * limit).Limit(limit).
+		Order("created_at DESC").Find(&messages).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return messages, total, nil
+}
+
+// 视频通话相关方法
+
+// CreateVideoCallSession 创建视频通话会话
+func (ms *MessageService) CreateVideoCallSession(callerID, calleeID, chatID string) (*models.VideoCallSession, error) {
+	callerIDUint, err := strconv.ParseUint(callerID, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	calleeIDUint, err := strconv.ParseUint(calleeID, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	chatIDUint, err := strconv.ParseUint(chatID, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	session := &models.VideoCallSession{
+		RoomID:   generateRoomID(),
+		CallerID: uint(callerIDUint),
+		CalleeID: uint(calleeIDUint),
+		ChatID:   uint(chatIDUint),
+		Status:   models.VideoCallStatusPending,
+	}
+
+	if err := ms.db.Create(session).Error; err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
+
+// AcceptVideoCall 接受视频通话
+func (ms *MessageService) AcceptVideoCall(sessionID, userID string) (*models.VideoCallSession, error) {
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	var session models.VideoCallSession
+	if err := ms.db.First(&session, "id = ? AND callee_id = ?", sessionID, userIDUint).Error; err != nil {
+		return nil, err
+	}
+
+	session.Status = models.VideoCallStatusAccepted
+	now := time.Now()
+	session.StartedAt = &now
+
+	if err := ms.db.Save(&session).Error; err != nil {
+		return nil, err
+	}
+
+	return &session, nil
+}
+
+// RejectVideoCall 拒绝视频通话
+func (ms *MessageService) RejectVideoCall(sessionID, userID string) (*models.VideoCallSession, error) {
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	var session models.VideoCallSession
+	if err := ms.db.First(&session, "id = ? AND callee_id = ?", sessionID, userIDUint).Error; err != nil {
+		return nil, err
+	}
+
+	session.Status = models.VideoCallStatusRejected
+
+	if err := ms.db.Save(&session).Error; err != nil {
+		return nil, err
+	}
+
+	return &session, nil
+}
+
+// EndVideoCall 结束视频通话
+func (ms *MessageService) EndVideoCall(sessionID, userID string) (*models.VideoCallSession, error) {
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	var session models.VideoCallSession
+	if err := ms.db.First(&session, "id = ? AND (caller_id = ? OR callee_id = ?)", sessionID, userIDUint, userIDUint).Error; err != nil {
+		return nil, err
+	}
+
+	session.Status = models.VideoCallStatusEnded
+	now := time.Now()
+	session.EndedAt = &now
+
+	if session.StartedAt != nil {
+		session.Duration = int(now.Sub(*session.StartedAt).Seconds())
+	}
+
+	if err := ms.db.Save(&session).Error; err != nil {
+		return nil, err
+	}
+
+	return &session, nil
+}
+
+// GetVideoCallHistory 获取视频通话历史
+func (ms *MessageService) GetVideoCallHistory(userID string, page, limit int) ([]models.VideoCallSession, int64, error) {
+	var sessions []models.VideoCallSession
+	var total int64
+
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if err := ms.db.Where("caller_id = ? OR callee_id = ?", userIDUint, userIDUint).
+		Count(&total).Offset((page - 1) * limit).Limit(limit).
+		Order("created_at DESC").Find(&sessions).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return sessions, total, nil
+}
+
+// 辅助函数
+func parseUserIDFromString(userID string) uint {
+	id, _ := strconv.ParseUint(userID, 10, 32)
+	return uint(id)
+}
+
+func generateRoomID() string {
+	return "room_" + strconv.FormatInt(time.Now().UnixNano(), 10)
+}
+
+// 视频消息相关方法
+
+// SendVideoMessage 发送视频消息
+func (ms *MessageService) SendVideoMessage(chatID, senderID, videoURL, thumbnailURL string, duration int) (*models.Message, error) {
+	chatIDUint, err := strconv.ParseUint(chatID, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	senderIDUint, err := strconv.ParseUint(senderID, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	message := &models.Message{
+		ChatID:       uint(chatIDUint),
+		SenderID:     uint(senderIDUint),
+		Type:         models.MessageTypeVideo,
+		Content:      "[视频消息]",
+		MediaURL:     videoURL,
+		ThumbnailURL: thumbnailURL,
+		Duration:     duration,
+		Status:       models.MessageStatusSent,
+	}
+
+	if err := ms.db.Create(message).Error; err != nil {
+		return nil, err
+	}
+
+	// 更新聊天最后消息
+	ms.db.Model(&models.Chat{}).
+		Where("id = ?", message.ChatID).
+		Updates(map[string]interface{}{
+			"last_message":      "[视频消息]",
+			"last_message_time": time.Now(),
+		})
+
+	return message, nil
+}
+
+// GetVideoMessages 获取视频消息列表
+func (ms *MessageService) GetVideoMessages(userID string, page, limit int) ([]models.Message, int64, error) {
+	var messages []models.Message
+	var total int64
+
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	query := ms.db.Where("type = ?", models.MessageTypeVideo).
+		Where("sender_id != ?", userIDUint) // 排除自己发送的视频消息
+
+	if err := query.Count(&total).Offset((page - 1) * limit).Limit(limit).
+		Order("created_at DESC").Find(&messages).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return messages, total, nil
+}
+
+// UpdateVideoMessageStatus 更新视频消息状态
+func (ms *MessageService) UpdateVideoMessageStatus(messageID, userID string, status models.MessageStatus) error {
+	return ms.db.Model(&models.Message{}).
+		Where("id = ? AND type = ?", messageID, models.MessageTypeVideo).
+		Update("status", status).Error
+}

@@ -1,9 +1,9 @@
 package services
 
 import (
-	"fittracker/internal/config"
-	"fittracker/internal/domain/models"
-	"fittracker/internal/domain/repositories"
+	"gymates/internal/config"
+	"gymates/internal/models"
+	"gymates/internal/domain/repositories"
 
 	"gorm.io/gorm"
 )

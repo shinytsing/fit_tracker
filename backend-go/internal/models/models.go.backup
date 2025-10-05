@@ -1,0 +1,502 @@
+package models
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+// 用户相关模型
+type User struct {
+	ID        uint           `json:"id" gorm:"primaryKey"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+
+	Username     string     `json:"username" gorm:"uniqueIndex;not null"`
+	Email        string     `json:"email" gorm:"uniqueIndex;not null"`
+	PasswordHash string     `json:"-" gorm:"not null"`
+	FirstName    string     `json:"first_name"`
+	LastName     string     `json:"last_name"`
+	Nickname     string     `json:"nickname"`
+	Avatar       string     `json:"avatar"`
+	Bio          string     `json:"bio"`
+	Gender       string     `json:"gender"`
+	Birthday     *time.Time `json:"birthday"`
+	Height       float64    `json:"height"` // cm
+	Weight       float64    `json:"weight"` // kg
+	BMI          float64    `json:"bmi"`
+	Level        int        `json:"level"`  // 用户等级
+	Points       int        `json:"points"` // 积分
+
+	// 社区相关字段
+	FitnessTags    string `json:"fitness_tags" gorm:"default:''"`   // JSON数组存储健身偏好标签
+	FitnessGoal    string `json:"fitness_goal" gorm:"default:''"`   // 健身目标
+	Location       string `json:"location" gorm:"default:''"`       // 位置信息
+	IsVerified     bool   `json:"is_verified" gorm:"default:false"` // 是否认证用户
+	FollowersCount int    `json:"followers_count" gorm:"default:0"` // 粉丝数
+	FollowingCount int    `json:"following_count" gorm:"default:0"` // 关注数
+
+	// 用户统计
+	TotalWorkouts int `json:"total_workouts" gorm:"default:0"`
+	TotalCheckins int `json:"total_checkins" gorm:"default:0"`
+	CurrentStreak int `json:"current_streak" gorm:"default:0"`
+	LongestStreak int `json:"longest_streak" gorm:"default:0"`
+}
+
+type RegisterRequest struct {
+	Username string `json:"username" binding:"required,min=3,max=20"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=6"`
+	Nickname string `json:"nickname" binding:"required"`
+}
+
+type LoginRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+type UpdateProfileRequest struct {
+	Nickname string  `json:"nickname"`
+	Bio      string  `json:"bio"`
+	Gender   string  `json:"gender"`
+	Birthday string  `json:"birthday"`
+	Height   float64 `json:"height"`
+	Weight   float64 `json:"weight"`
+}
+
+// 训练相关模型
+type TrainingPlan struct {
+	ID            uint               `json:"id" gorm:"primaryKey"`
+	UserID        uint               `json:"user_id" gorm:"not null"`
+	Name          string             `json:"name" gorm:"not null"`
+	Description   string             `json:"description"`
+	Date          time.Time          `json:"date" gorm:"not null"`
+	Exercises     []TrainingExercise `json:"exercises" gorm:"foreignKey:PlanID"`
+	Duration      int                `json:"duration"` // 分钟
+	Calories      int                `json:"calories"`
+	Status        string             `json:"status"` // pending, in_progress, completed, skipped
+	IsAIGenerated bool               `json:"is_ai_generated"`
+	AIReason      string             `json:"ai_reason"`
+	CreatedAt     time.Time          `json:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at"`
+}
+
+type TrainingExercise struct {
+	ID           uint          `json:"id" gorm:"primaryKey"`
+	PlanID       uint          `json:"plan_id" gorm:"not null"`
+	Name         string        `json:"name" gorm:"not null"`
+	Description  string        `json:"description"`
+	Category     string        `json:"category"`   // 胸、背、腿、肩、臂等
+	Difficulty   string        `json:"difficulty"` // 初级、中级、高级
+	MuscleGroups []string      `json:"muscle_groups" gorm:"serializer:json"`
+	Equipment    []string      `json:"equipment" gorm:"serializer:json"`
+	Sets         []ExerciseSet `json:"sets" gorm:"foreignKey:ExerciseID"`
+	VideoURL     string        `json:"video_url"`
+	ImageURL     string        `json:"image_url"`
+	Instructions string        `json:"instructions"`
+	Order        int           `json:"order"`
+	CreatedAt    time.Time     `json:"created_at"`
+	UpdatedAt    time.Time     `json:"updated_at"`
+}
+
+type ExerciseSet struct {
+	ID         uint      `json:"id" gorm:"primaryKey"`
+	ExerciseID uint      `json:"exercise_id" gorm:"not null"`
+	Reps       int       `json:"reps"`
+	Weight     float64   `json:"weight"`    // kg
+	Duration   int       `json:"duration"`  // 秒，用于有氧运动
+	Distance   float64   `json:"distance"`  // 公里，用于跑步等
+	RestTime   int       `json:"rest_time"` // 秒
+	Completed  bool      `json:"completed"`
+	Order      int       `json:"order"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type CreatePlanRequest struct {
+	Name        string                  `json:"name" binding:"required"`
+	Description string                  `json:"description"`
+	Date        string                  `json:"date" binding:"required"`
+	Exercises   []CreateExerciseRequest `json:"exercises" binding:"required"`
+}
+
+type CreateExerciseRequest struct {
+	Name         string             `json:"name" binding:"required"`
+	Description  string             `json:"description"`
+	Category     string             `json:"category"`
+	Difficulty   string             `json:"difficulty"`
+	MuscleGroups []string           `json:"muscle_groups"`
+	Equipment    []string           `json:"equipment"`
+	Sets         []CreateSetRequest `json:"sets" binding:"required"`
+	VideoURL     string             `json:"video_url"`
+	ImageURL     string             `json:"image_url"`
+	Instructions string             `json:"instructions"`
+	Order        int                `json:"order"`
+}
+
+type CreateSetRequest struct {
+	Reps     int     `json:"reps" binding:"required"`
+	Weight   float64 `json:"weight"`
+	Duration int     `json:"duration"`
+	Distance float64 `json:"distance"`
+	RestTime int     `json:"rest_time"`
+	Order    int     `json:"order"`
+}
+
+type UpdatePlanRequest struct {
+	Name        string                  `json:"name"`
+	Description string                  `json:"description"`
+	Exercises   []CreateExerciseRequest `json:"exercises"`
+}
+
+type GenerateAIPlanRequest struct {
+	Goal       string   `json:"goal"`        // 减脂、增肌、塑形等
+	Duration   int      `json:"duration"`    // 训练时长（分钟）
+	Difficulty string   `json:"difficulty"`  // 初级、中级、高级
+	Equipment  []string `json:"equipment"`   // 可用器械
+	FocusAreas []string `json:"focus_areas"` // 重点训练部位
+}
+
+type CompleteExerciseRequest struct {
+	SetIndex int `json:"set_index" binding:"required"`
+}
+
+type CompleteWorkoutRequest struct {
+	PlanID   string `json:"plan_id" binding:"required"`
+	Duration int    `json:"duration"`
+	Calories int    `json:"calories"`
+	Notes    string `json:"notes"`
+}
+
+// 社区相关模型
+type Post struct {
+	ID           string       `json:"id" gorm:"primaryKey"`
+	UserID       uint         `json:"user_id" gorm:"not null"`
+	Content      string       `json:"content" gorm:"not null"`
+	Type         string       `json:"type"` // text, image, video, workout, checkin
+	Images       []string     `json:"images" gorm:"serializer:json"`
+	VideoURL     string       `json:"video_url"`
+	Tags         []string     `json:"tags" gorm:"serializer:json"`
+	Location     string       `json:"location"`
+	WorkoutData  *WorkoutData `json:"workout_data" gorm:"serializer:json"`
+	LikeCount    int          `json:"like_count"`
+	CommentCount int          `json:"comment_count"`
+	ShareCount   int          `json:"share_count"`
+	IsLiked      bool         `json:"is_liked" gorm:"-"`
+	CreatedAt    time.Time    `json:"created_at"`
+	UpdatedAt    time.Time    `json:"updated_at"`
+
+	// 关联数据
+	User     User       `json:"user" gorm:"foreignKey:UserID"`
+	Comments []Comment  `json:"comments" gorm:"foreignKey:PostID"`
+	Likes    []PostLike `json:"likes" gorm:"foreignKey:PostID"`
+}
+
+func (Post) TableName() string {
+	return "posts"
+}
+
+type WorkoutData struct {
+	ExerciseName string   `json:"exercise_name"`
+	Duration     int      `json:"duration"`
+	Calories     int      `json:"calories"`
+	Exercises    []string `json:"exercises"`
+}
+
+type Comment struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	PostID    uint      `json:"post_id" gorm:"not null"`
+	UserID    uint      `json:"user_id" gorm:"not null"`
+	Content   string    `json:"content" gorm:"not null"`
+	ParentID  string    `json:"parent_id"` // 回复的评论ID
+	LikeCount int       `json:"like_count"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// 关联数据
+	User    User      `json:"user" gorm:"foreignKey:UserID"`
+	Replies []Comment `json:"replies" gorm:"foreignKey:ParentID"`
+}
+
+func (Comment) TableName() string {
+	return "comments"
+}
+
+type PostLike struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	PostID    uint      `json:"post_id" gorm:"not null"`
+	UserID    uint      `json:"user_id" gorm:"not null"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func (PostLike) TableName() string {
+	return "likes"
+}
+
+type Follow struct {
+	ID          uint      `json:"id" gorm:"primaryKey"`
+	FollowerID  uint      `json:"follower_id" gorm:"not null"`
+	FollowingID uint      `json:"following_id" gorm:"not null"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type Topic struct {
+	ID          uint      `json:"id" gorm:"primaryKey"`
+	Name        string    `json:"name" gorm:"uniqueIndex;not null"`
+	Description string    `json:"description"`
+	ImageURL    string    `json:"image_url"`
+	PostCount   int       `json:"post_count"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type CreatePostRequest struct {
+	Content     string       `json:"content" binding:"required"`
+	Type        string       `json:"type" binding:"required"`
+	Images      []string     `json:"images"`
+	VideoURL    string       `json:"video_url"`
+	Tags        []string     `json:"tags"`
+	Location    string       `json:"location"`
+	WorkoutData *WorkoutData `json:"workout_data"`
+}
+
+type UpdatePostRequest struct {
+	Content     string       `json:"content"`
+	Images      []string     `json:"images"`
+	VideoURL    string       `json:"video_url"`
+	Tags        []string     `json:"tags"`
+	Location    string       `json:"location"`
+	WorkoutData *WorkoutData `json:"workout_data"`
+}
+
+type CreateCommentRequest struct {
+	Content  string `json:"content" binding:"required"`
+	ParentID string `json:"parent_id"`
+}
+
+// 消息相关模型
+type Chat struct {
+	ID              uint      `json:"id" gorm:"primaryKey"`
+	User1ID         uint      `json:"user1_id" gorm:"not null"`
+	User2ID         uint      `json:"user2_id" gorm:"not null"`
+	LastMessage     string    `json:"last_message"`
+	LastMessageTime time.Time `json:"last_message_time"`
+	UnreadCount     int       `json:"unread_count"`
+	IsOnline        bool      `json:"is_online" gorm:"-"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+
+	// 关联数据
+	User1 User `json:"user1" gorm:"foreignKey:User1ID"`
+	User2 User `json:"user2" gorm:"foreignKey:User2ID"`
+}
+
+type Message struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	ChatID    uint      `json:"chat_id" gorm:"not null"`
+	SenderID  uint      `json:"sender_id" gorm:"not null"`
+	Content   string    `json:"content" gorm:"not null"`
+	Type      string    `json:"type"` // text, image, video, audio
+	IsRead    bool      `json:"is_read"`
+	CreatedAt time.Time `json:"created_at"`
+
+	// 关联数据
+	Sender User `json:"sender" gorm:"foreignKey:SenderID"`
+}
+
+type Notification struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	UserID    uint      `json:"user_id" gorm:"not null"`
+	Type      string    `json:"type"` // like, comment, follow, workout, achievement, system
+	Title     string    `json:"title" gorm:"not null"`
+	Content   string    `json:"content" gorm:"not null"`
+	ImageURL  string    `json:"image_url"`
+	ActionURL string    `json:"action_url"`
+	IsRead    bool      `json:"is_read"`
+	ExtraData string    `json:"extra_data" gorm:"serializer:json"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type CreateChatRequest struct {
+	UserID string `json:"user_id" binding:"required"`
+}
+
+type SendMessageRequest struct {
+	Content string `json:"content" binding:"required"`
+	Type    string `json:"type"`
+}
+
+// AI相关模型
+type GenerateTrainingPlanRequest struct {
+	Goal       string   `json:"goal" binding:"required"`
+	Duration   int      `json:"duration" binding:"required"`
+	Difficulty string   `json:"difficulty" binding:"required"`
+	Equipment  []string `json:"equipment"`
+	FocusAreas []string `json:"focus_areas"`
+}
+
+type GenerateNutritionPlanRequest struct {
+	Goal        string   `json:"goal" binding:"required"`
+	DietType    string   `json:"diet_type"`
+	Allergies   []string `json:"allergies"`
+	Preferences []string `json:"preferences"`
+	MealsPerDay int      `json:"meals_per_day"`
+}
+
+type AIChatRequest struct {
+	Message string `json:"message" binding:"required"`
+	Context string `json:"context"`
+}
+
+// 签到相关模型
+type CheckIn struct {
+	ID         uint      `json:"id" gorm:"primaryKey"`
+	UserID     uint      `json:"user_id" gorm:"not null"`
+	Date       time.Time `json:"date" gorm:"not null"`
+	Type       string    `json:"type"` // 训练、饮食、休息等
+	Notes      string    `json:"notes"`
+	Mood       string    `json:"mood"`       // 心情状态
+	Energy     int       `json:"energy"`     // 能量等级 1-10
+	Motivation int       `json:"motivation"` // 动力等级 1-10
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+
+	// 关联数据
+	User User `json:"user" gorm:"foreignKey:UserID"`
+}
+
+func (CheckIn) TableName() string {
+	return "checkins"
+}
+
+// 训练计划相关模型（扩展）
+type WorkoutPlan struct {
+	ID          string    `json:"id" gorm:"primaryKey"`
+	UserID      uint      `json:"user_id" gorm:"not null"`
+	Name        string    `json:"name" gorm:"not null"`
+	Description string    `json:"description"`
+	Type        string    `json:"type"`       // 全身、上肢、下肢等
+	Difficulty  string    `json:"difficulty"` // 初级、中级、高级
+	Duration    int       `json:"duration"`   // 分钟
+	IsPublic    bool      `json:"is_public"`
+	IsAI        bool      `json:"is_ai"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+
+	// 关联数据
+	User      User              `json:"user" gorm:"foreignKey:UserID"`
+	Exercises []WorkoutExercise `json:"exercises" gorm:"foreignKey:PlanID"`
+	Sessions  []WorkoutSession  `json:"sessions" gorm:"foreignKey:PlanID"`
+}
+
+type WorkoutSession struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	PlanID    string    `json:"plan_id" gorm:"not null"`
+	UserID    uint      `json:"user_id" gorm:"not null"`
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
+	Duration  int       `json:"duration"` // 分钟
+	Calories  int       `json:"calories"`
+	Status    string    `json:"status"` // in_progress, completed, paused
+	Notes     string    `json:"notes"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// 关联数据
+	Plan      WorkoutPlan       `json:"plan" gorm:"foreignKey:PlanID"`
+	User      User              `json:"user" gorm:"foreignKey:UserID"`
+	Exercises []WorkoutExercise `json:"exercises" gorm:"foreignKey:SessionID"`
+}
+
+type WorkoutExercise struct {
+	ID           string    `json:"id" gorm:"primaryKey"`
+	PlanID       string    `json:"plan_id"`
+	SessionID    string    `json:"session_id"`
+	Name         string    `json:"name" gorm:"not null"`
+	Description  string    `json:"description"`
+	Category     string    `json:"category"`
+	Difficulty   string    `json:"difficulty"`
+	MuscleGroups string    `json:"muscle_groups"`
+	Equipment    string    `json:"equipment"`
+	Sets         int       `json:"sets"`
+	Reps         int       `json:"reps"`
+	Weight       float64   `json:"weight"`
+	Duration     int       `json:"duration"`
+	RestTime     int       `json:"rest_time"`
+	Notes        string    `json:"notes"`
+	Order        int       `json:"order"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+
+	// 关联数据
+	Plan    WorkoutPlan    `json:"plan" gorm:"foreignKey:PlanID"`
+	Session WorkoutSession `json:"session" gorm:"foreignKey:SessionID"`
+}
+
+// 评论相关模型（扩展）
+type PostComment struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	PostID    uint      `json:"post_id" gorm:"not null"`
+	UserID    uint      `json:"user_id" gorm:"not null"`
+	Content   string    `json:"content" gorm:"not null"`
+	ParentID  string    `json:"parent_id"`
+	LikeCount int       `json:"like_count"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// 关联数据
+	Post    Post          `json:"post" gorm:"foreignKey:PostID"`
+	User    User          `json:"user" gorm:"foreignKey:UserID"`
+	Parent  *PostComment  `json:"parent" gorm:"foreignKey:ParentID"`
+	Replies []PostComment `json:"replies" gorm:"foreignKey:ParentID"`
+}
+
+// AI相关模型
+type AIModel struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	Name      string    `json:"name" gorm:"not null"`
+	Provider  string    `json:"provider"` // deepseek, openai, etc.
+	ModelName string    `json:"model_name"`
+	APIKey    string    `json:"api_key"`
+	BaseURL   string    `json:"base_url"`
+	IsActive  bool      `json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type AIRequest struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	UserID    uint      `json:"user_id" gorm:"not null"`
+	ModelID   uint      `json:"model_id" gorm:"not null"`
+	Type      string    `json:"type"` // training_plan, nutrition_plan, chat
+	Input     string    `json:"input" gorm:"type:text"`
+	Output    string    `json:"output" gorm:"type:text"`
+	Tokens    int       `json:"tokens"`
+	Cost      float64   `json:"cost"`
+	Status    string    `json:"status"` // pending, completed, failed
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// 关联数据
+	User  User    `json:"user" gorm:"foreignKey:UserID"`
+	Model AIModel `json:"model" gorm:"foreignKey:ModelID"`
+}
+
+// 媒体文件模型
+type MediaFile struct {
+	ID               uint      `json:"id" gorm:"primaryKey"`
+	UserID           uint      `json:"user_id" gorm:"not null"`
+	Filename         string    `json:"filename" gorm:"not null"`
+	OriginalFilename string    `json:"original_filename"`
+	FilePath         string    `json:"file_path"`
+	FileURL          string    `json:"file_url"`
+	FileType         string    `json:"file_type"` // image, video, audio, document
+	MimeType         string    `json:"mime_type"`
+	FileSize         int64     `json:"file_size"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+
+	// 关联数据
+	User User `json:"user" gorm:"foreignKey:UserID"`
+}

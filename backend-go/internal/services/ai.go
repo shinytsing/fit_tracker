@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
-	"fittracker/internal/config"
-	"fittracker/internal/models"
+	"gymates/internal/config"
+	"gymates/internal/models"
 )
 
 type AIService struct {
@@ -23,7 +24,7 @@ func NewAIService(cfg *config.Config) *AIService {
 }
 
 // GenerateTrainingPlan 生成AI训练计划
-func (s *AIService) GenerateTrainingPlan(req WorkoutPlanRequest) (*models.TrainingPlan, error) {
+func (s *AIService) GenerateTrainingPlan(req *models.GenerateTrainingPlanRequest) (*models.TrainingPlan, error) {
 	// 构建提示词
 	prompt := s.buildWorkoutPlanPrompt(req)
 
@@ -43,7 +44,7 @@ func (s *AIService) GenerateTrainingPlan(req WorkoutPlanRequest) (*models.Traini
 }
 
 // buildWorkoutPlanPrompt 构建训练计划提示词
-func (s *AIService) buildWorkoutPlanPrompt(req WorkoutPlanRequest) string {
+func (s *AIService) buildWorkoutPlanPrompt(req *models.GenerateTrainingPlanRequest) string {
 	prompt := fmt.Sprintf(`
 请为我生成一个个性化的健身训练计划，具体要求如下：
 
@@ -82,7 +83,7 @@ func (s *AIService) buildWorkoutPlanPrompt(req WorkoutPlanRequest) string {
 }
 
 请确保计划科学合理，适合我的水平和目标。
-`, req.Goal, req.Duration, req.Difficulty, req.Experience, req.Equipment, req.TimePerDay, req.Preferences)
+`, req.Goal, req.Duration, req.Difficulty, "中级", strings.Join(req.Equipment, ","), 60, "力量训练")
 
 	return prompt
 }
@@ -261,7 +262,7 @@ func (s *AIService) callGroq(prompt string) (string, error) {
 }
 
 // parseWorkoutPlanResponse 解析AI响应
-func (s *AIService) parseWorkoutPlanResponse(response string, req WorkoutPlanRequest) (*models.TrainingPlan, error) {
+func (s *AIService) parseWorkoutPlanResponse(response string, req *models.GenerateTrainingPlanRequest) (*models.TrainingPlan, error) {
 	// 尝试解析JSON响应
 	var planData map[string]interface{}
 	if err := json.Unmarshal([]byte(response), &planData); err != nil {
@@ -271,6 +272,7 @@ func (s *AIService) parseWorkoutPlanResponse(response string, req WorkoutPlanReq
 
 	// 创建训练计划
 	plan := &models.TrainingPlan{
+		ID:            fmt.Sprintf("ai_%d", time.Now().Unix()),
 		UserID:        "1",
 		Name:          s.getString(planData, "title", "AI生成训练计划"),
 		Description:   s.getString(planData, "description", ""),
@@ -282,8 +284,9 @@ func (s *AIService) parseWorkoutPlanResponse(response string, req WorkoutPlanReq
 }
 
 // createMockWorkoutPlan 创建模拟训练计划
-func (s *AIService) createMockWorkoutPlan(req WorkoutPlanRequest) *models.TrainingPlan {
+func (s *AIService) createMockWorkoutPlan(req *models.GenerateTrainingPlanRequest) *models.TrainingPlan {
 	return &models.TrainingPlan{
+		ID:            fmt.Sprintf("mock_%d", time.Now().Unix()),
 		UserID:        "1",
 		Name:          fmt.Sprintf("%s - %d天训练计划", req.Goal, req.Duration),
 		Description:   fmt.Sprintf("针对%s目标的%d天训练计划，适合%s水平", req.Goal, req.Duration, req.Difficulty),

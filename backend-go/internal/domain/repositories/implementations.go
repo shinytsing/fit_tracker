@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"fittracker/internal/domain/models"
+	"gymates/internal/models"
 
 	"gorm.io/gorm"
 )
@@ -481,7 +481,7 @@ func (r *followRepository) DeleteByFollowerAndFollowing(followerID, followingID 
 func (r *followRepository) GetFollowers(userID uint, limit, offset int) ([]*models.User, error) {
 	var users []*models.User
 	err := r.db.Table("users").
-		Joins("JOIN follows ON users.id = follows.follower_id").
+		Joins("JOIN follows ON users.uid = follows.follower_id").
 		Where("follows.following_id = ?", userID).
 		Limit(limit).Offset(offset).
 		Find(&users).Error
@@ -491,7 +491,7 @@ func (r *followRepository) GetFollowers(userID uint, limit, offset int) ([]*mode
 func (r *followRepository) GetFollowing(userID uint, limit, offset int) ([]*models.User, error) {
 	var users []*models.User
 	err := r.db.Table("users").
-		Joins("JOIN follows ON users.id = follows.following_id").
+		Joins("JOIN follows ON users.uid = follows.following_id").
 		Where("follows.follower_id = ?", userID).
 		Limit(limit).Offset(offset).
 		Find(&users).Error

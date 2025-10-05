@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../core/models/models.dart';
-import '../../core/providers/community_provider.dart';
-import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/custom_widgets.dart';
+import '../../../core/models/models.dart';
+import '../../../core/providers/community_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/custom_widgets.dart';
 
 /// 挑战赛详情页面
 class ChallengeDetailPage extends ConsumerStatefulWidget {
@@ -724,7 +724,7 @@ class _ChallengeDetailPageState extends ConsumerState<ChallengeDetailPage> {
 
   void _joinChallenge() async {
     final communityNotifier = ref.read(communityNotifierProvider.notifier);
-    final success = await communityNotifier.joinChallenge(widget.challenge.id);
+    final success = await communityNotifier.joinChallenge(int.parse(widget.challenge.id));
     
     if (success) {
       setState(() {

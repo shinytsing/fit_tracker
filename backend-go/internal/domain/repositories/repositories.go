@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"fittracker/internal/domain/models"
+	"gymates/internal/models"
 )
 
 // UserRepository 用户仓储接口

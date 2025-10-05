@@ -198,7 +198,7 @@ class EmptyWidget extends StatelessWidget {
             Text(
               title,
               style: theme.textTheme.headlineSmall?.copyWith(
-                color: AppTheme.textSecondaryColor,
+                color: AppTheme.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -207,7 +207,7 @@ class EmptyWidget extends StatelessWidget {
               Text(
                 subtitle!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textHintColor,
+                  color: AppTheme.textHint,
                 ),
                 textAlign: TextAlign.center,
               ),

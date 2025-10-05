@@ -1,0 +1,72 @@
+{
+  "UserStats": {
+    "column_missing_in_model": [],
+    "field_missing_in_db": [],
+    "type_mismatch": [
+      {
+        "field": "UserID",
+        "model_type": "uint",
+        "db_type": "BIGINT"
+      }
+    ],
+    "tag_mismatch": []
+  },
+  "UserSettings": {
+    "column_missing_in_model": [
+      "deleted_at"
+    ],
+    "field_missing_in_db": [
+      "User"
+    ],
+    "type_mismatch": [
+      {
+        "field": "ID",
+        "model_type": "uint",
+        "db_type": "BIGSERIAL"
+      },
+      {
+        "field": "UserID",
+        "model_type": "uint",
+        "db_type": "BIGINT"
+      },
+      {
+        "field": "Language",
+        "model_type": "string",
+        "db_type": "VARCHAR(10)"
+      },
+      {
+        "field": "Timezone",
+        "model_type": "string",
+        "db_type": "VARCHAR(50)"
+      },
+      {
+        "field": "UnitSystem",
+        "model_type": "string",
+        "db_type": "VARCHAR(20)"
+      },
+      {
+        "field": "PrivacyLevel",
+        "model_type": "string",
+        "db_type": "VARCHAR(20)"
+      },
+      {
+        "field": "Theme",
+        "model_type": "string",
+        "db_type": "VARCHAR(20)"
+      },
+      {
+        "field": "FontSize",
+        "model_type": "string",
+        "db_type": "VARCHAR(20)"
+      }
+    ],
+    "tag_mismatch": [
+      {
+        "field": "ID",
+        "issue": "primary_key_mismatch",
+        "model_primary": false,
+        "db_primary": true
+      }
+    ]
+  }
+}

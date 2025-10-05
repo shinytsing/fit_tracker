@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../../../core/models/models.dart';
+import '../../../../core/services/community_api_service.dart';
 
 part 'community_provider.freezed.dart';
 part 'community_provider.g.dart';
@@ -14,6 +14,7 @@ class CommunityState with _$CommunityState {
     @Default([]) List<Post> followingPosts,
     @Default([]) List<Post> recommendPosts,
     @Default([]) List<Post> posts,
+    @Default([]) List<Post> trendingPosts,
     @Default([]) List<User> followingUsers,
     @Default([]) List<Topic> trendingTopics,
     @Default([]) List<Topic> hotTopics,
@@ -28,11 +29,10 @@ class CommunityState with _$CommunityState {
     @Default([]) List<User> users,
     @Default(false) bool hasMoreFollowing,
     @Default(false) bool hasMoreRecommend,
+    @Default(false) bool hasMoreTrending,
     String? error,
   }) = _CommunityState;
 }
-
-
 
 @freezed
 class WorkoutData with _$WorkoutData {
@@ -78,10 +78,16 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
     state = state.copyWith(isLoading: true);
     
     try {
-      // TODO: 从API加载关注流数据
-      await Future.delayed(const Duration(seconds: 1));
+      // 调用真实 API 获取关注流数据
+      final postsData = await CommunityApiService.getPosts(
+        page: 1,
+        pageSize: 20,
+        type: 'following',
+      );
       
-      final posts = _generateMockFollowingPosts();
+      // 转换为 Post 模型
+      final posts = postsData.map((data) => Post.fromJson(data)).toList();
+      
       state = state.copyWith(
         isLoading: false,
         followingPosts: posts,
@@ -98,10 +104,16 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
     state = state.copyWith(isLoadingRecommend: true);
     
     try {
-      // TODO: 从API加载推荐流数据
-      await Future.delayed(const Duration(seconds: 1));
+      // 调用真实 API 获取推荐流数据
+      final postsData = await CommunityApiService.getPosts(
+        page: 1,
+        pageSize: 20,
+        type: 'recommend',
+      );
       
-      final posts = _generateMockRecommendPosts();
+      // 转换为 Post 模型
+      final posts = postsData.map((data) => Post.fromJson(data)).toList();
+      
       state = state.copyWith(
         isLoadingRecommend: false,
         recommendPosts: posts,
@@ -114,17 +126,51 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
     }
   }
 
-  Future<void> refreshPosts() async {
+  Future<void> refreshTrendingPosts() async {
     state = state.copyWith(isLoading: true);
     
     try {
-      // TODO: 从API加载通用帖子数据
-      await Future.delayed(const Duration(seconds: 1));
+      // 调用真实 API 获取热门动态数据
+      final postsData = await CommunityApiService.getPosts(
+        page: 1,
+        pageSize: 20,
+        type: 'trending',
+      );
       
-      final posts = _generateMockRecommendPosts();
+      // 转换为 Post 模型
+      final posts = postsData.map((data) => Post.fromJson(data)).toList();
+      
       state = state.copyWith(
         isLoading: false,
-        posts: posts,
+        trendingPosts: posts,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  Future<void> loadMoreTrendingPosts() async {
+    if (state.isLoading || !state.hasMoreTrending) return;
+    
+    state = state.copyWith(isLoading: true);
+    
+    try {
+      final currentPage = (state.trendingPosts.length / 20).ceil() + 1;
+      final postsData = await CommunityApiService.getPosts(
+        page: currentPage,
+        pageSize: 20,
+        type: 'trending',
+      );
+      
+      final newPosts = postsData.map((data) => Post.fromJson(data)).toList();
+      
+      state = state.copyWith(
+        isLoading: false,
+        trendingPosts: [...state.trendingPosts, ...newPosts],
+        hasMoreTrending: newPosts.length == 20,
       );
     } catch (e) {
       state = state.copyWith(
@@ -141,7 +187,7 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
   }
 
   Future<void> toggleLike(String postId) async {
-    // 更新关注流
+    // 先更新 UI 状态
     final updatedFollowingPosts = state.followingPosts.map((post) {
       if (post.id == postId) {
         return post.copyWith(
@@ -152,7 +198,6 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
       return post;
     }).toList();
 
-    // 更新推荐流
     final updatedRecommendPosts = state.recommendPosts.map((post) {
       if (post.id == postId) {
         return post.copyWith(
@@ -168,11 +213,48 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
       recommendPosts: updatedRecommendPosts,
     );
 
-    // TODO: 调用API更新点赞状态
+    // 调用真实 API
+    try {
+      final post = state.followingPosts.firstWhere((p) => p.id == postId, 
+          orElse: () => state.recommendPosts.firstWhere((p) => p.id == postId));
+      
+      if (post.isLiked) {
+        await CommunityApiService.likePost(postId);
+      } else {
+        await CommunityApiService.unlikePost(postId);
+      }
+    } catch (e) {
+      // 如果 API 调用失败，回滚 UI 状态
+      final revertedFollowingPosts = state.followingPosts.map((post) {
+        if (post.id == postId) {
+          return post.copyWith(
+            isLiked: !post.isLiked,
+            likeCount: post.isLiked ? post.likeCount + 1 : post.likeCount - 1,
+          );
+        }
+        return post;
+      }).toList();
+
+      final revertedRecommendPosts = state.recommendPosts.map((post) {
+        if (post.id == postId) {
+          return post.copyWith(
+            isLiked: !post.isLiked,
+            likeCount: post.isLiked ? post.likeCount + 1 : post.likeCount - 1,
+          );
+        }
+        return post;
+      }).toList();
+
+      state = state.copyWith(
+        followingPosts: revertedFollowingPosts,
+        recommendPosts: revertedRecommendPosts,
+        error: '点赞操作失败: ${e.toString()}',
+      );
+    }
   }
 
   Future<void> toggleFollow(String userId) async {
-    // 更新关注流
+    // 先更新 UI 状态
     final updatedFollowingPosts = state.followingPosts.map((post) {
       if (post.authorId == userId) {
         return post.copyWith(isFollowed: !post.isFollowed);
@@ -180,7 +262,6 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
       return post;
     }).toList();
 
-    // 更新推荐流
     final updatedRecommendPosts = state.recommendPosts.map((post) {
       if (post.authorId == userId) {
         return post.copyWith(isFollowed: !post.isFollowed);
@@ -193,144 +274,143 @@ class CommunityNotifier extends StateNotifier<CommunityState> {
       recommendPosts: updatedRecommendPosts,
     );
 
-    // TODO: 调用API更新关注状态
-  }
+    // 调用真实 API
+    try {
+      final post = state.followingPosts.firstWhere((p) => p.authorId == userId, 
+          orElse: () => state.recommendPosts.firstWhere((p) => p.authorId == userId));
+      
+      if (post.isFollowed) {
+        await CommunityApiService.followUser(userId);
+      } else {
+        await CommunityApiService.unfollowUser(userId);
+      }
+    } catch (e) {
+      // 如果 API 调用失败，回滚 UI 状态
+      final revertedFollowingPosts = state.followingPosts.map((post) {
+        if (post.authorId == userId) {
+          return post.copyWith(isFollowed: !post.isFollowed);
+        }
+        return post;
+      }).toList();
 
-  List<Post> _generateMockFollowingPosts() {
-    return List.generate(10, (index) {
-      return Post(
-        id: 'following_$index',
-        userId: 'user_$index',
-        content: '今天完成了${index + 1}组训练，感觉棒极了！💪',
-        isPublic: true,
-        isFeatured: false,
-        viewCount: 100 + index * 10,
-        shareCount: index,
-        likesCount: 10 + index * 5,
-        commentsCount: 3 + index,
-        sharesCount: index,
-        createdAt: DateTime.now().subtract(Duration(hours: index)),
-        updatedAt: DateTime.now().subtract(Duration(hours: index)),
-        type: PostType.text.name,
-        images: index % 3 == 0 ? ['https://via.placeholder.com/300'] : [],
-        tags: ['健身', '训练', '打卡'],
-        likeCount: 10 + index * 5,
-        commentCount: 3 + index,
-        isLiked: index % 2 == 0,
-        isFollowed: true,
-        authorId: 'user_$index',
-        authorName: '健身达人${index + 1}',
-        authorAvatar: 'https://via.placeholder.com/40',
-        workoutData: index % 4 == 0 ? WorkoutData(
-          name: '胸肌训练',
-          exerciseName: '胸肌训练',
-          duration: 45,
-          calories: 300,
-          exercises: ['平板卧推', '上斜卧推', '飞鸟'],
-        ) : null,
+      final revertedRecommendPosts = state.recommendPosts.map((post) {
+        if (post.authorId == userId) {
+          return post.copyWith(isFollowed: !post.isFollowed);
+        }
+        return post;
+      }).toList();
+
+      state = state.copyWith(
+        followingPosts: revertedFollowingPosts,
+        recommendPosts: revertedRecommendPosts,
+        error: '关注操作失败: ${e.toString()}',
       );
-    });
+    }
   }
 
-  List<Post> _generateMockRecommendPosts() {
-    return List.generate(15, (index) {
-      return Post(
-        id: 'recommend_$index',
-        userId: 'user_${index + 10}',
-        content: '分享一个超有效的训练动作！🔥',
-        isPublic: true,
-        isFeatured: false,
-        viewCount: 200 + index * 15,
-        shareCount: index + 1,
-        likesCount: 20 + index * 3,
-        commentsCount: 5 + index,
-        sharesCount: index + 1,
-        createdAt: DateTime.now().subtract(Duration(hours: index + 2)),
-        updatedAt: DateTime.now().subtract(Duration(hours: index + 2)),
-        type: PostType.image.name,
-        images: ['https://via.placeholder.com/300'],
-        tags: ['推荐', '训练', '技巧'],
-        likeCount: 20 + index * 3,
-        commentCount: 5 + index,
-        isLiked: index % 3 == 0,
-        isFollowed: false,
-        authorId: 'user_${index + 10}',
-        authorName: '推荐用户${index + 1}',
-        authorAvatar: 'https://via.placeholder.com/40',
-      );
-    });
-  }
-
+  // 生成模拟数据的方法
   List<Topic> _generateMockTopics() {
     return [
       Topic(
-        id: '1',
-        name: '减脂训练',
-        description: '分享减脂训练心得',
-        postsCount: 1250,
-        postCount: 1250,
+        id: '1', 
+        name: '健身', 
+        description: '健身相关话题', 
+        postCount: 1000,
+        postsCount: 1000,
         followersCount: 500,
         isHot: true,
         isOfficial: false,
-        createdAt: DateTime.now().subtract(Duration(days: 30)),
-        updatedAt: DateTime.now().subtract(Duration(days: 1)),
-        trend: 15.5,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
       Topic(
-        id: '2',
-        name: '增肌计划',
-        description: '增肌训练计划分享',
-        postsCount: 980,
-        postCount: 980,
-        followersCount: 300,
+        id: '2', 
+        name: '减脂', 
+        description: '减脂相关话题', 
+        postCount: 800,
+        postsCount: 800,
+        followersCount: 400,
         isHot: true,
         isOfficial: false,
-        createdAt: DateTime.now().subtract(Duration(days: 25)),
-        updatedAt: DateTime.now().subtract(Duration(days: 2)),
-        trend: 12.3,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
       Topic(
-        id: '3',
-        name: '瑜伽练习',
-        description: '瑜伽练习技巧',
-        postsCount: 756,
-        postCount: 756,
+        id: '3', 
+        name: '增肌', 
+        description: '增肌相关话题', 
+        postCount: 600,
+        postsCount: 600,
+        followersCount: 300,
+        isHot: false,
+        isOfficial: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      Topic(
+        id: '4', 
+        name: '瑜伽', 
+        description: '瑜伽相关话题', 
+        postCount: 400,
+        postsCount: 400,
         followersCount: 200,
         isHot: false,
-        isOfficial: true,
-        createdAt: DateTime.now().subtract(Duration(days: 20)),
-        updatedAt: DateTime.now().subtract(Duration(days: 3)),
-        trend: 8.7,
+        isOfficial: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      Topic(
+        id: '5', 
+        name: '跑步', 
+        description: '跑步相关话题', 
+        postCount: 500,
+        postsCount: 500,
+        followersCount: 250,
+        isHot: false,
+        isOfficial: false,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       ),
     ];
   }
 
+  // 加载初始数据
   Future<void> loadInitialData() async {
-    state = state.copyWith(isLoading: true);
-    // TODO: 实现数据加载
+    await _loadInitialData();
   }
 
+  // 加载更多帖子
   Future<void> loadMorePosts() async {
     // TODO: 实现加载更多帖子
   }
 
+  // 加载更多关注帖子
   Future<void> loadMoreFollowingPosts() async {
     // TODO: 实现加载更多关注帖子
   }
 
+  // 加载更多推荐帖子
   Future<void> loadMoreRecommendPosts() async {
     // TODO: 实现加载更多推荐帖子
   }
 
+  // 点赞帖子
   Future<void> likePost(String postId) async {
-    // TODO: 实现点赞帖子
+    await toggleLike(postId);
   }
 
+  // 关注用户
   Future<void> followUser(String userId) async {
-    // TODO: 实现关注用户
+    await toggleFollow(userId);
   }
 
+  // 参与挑战
   Future<void> joinChallenge(String challengeId) async {
-    // TODO: 实现加入挑战
+    // TODO: 实现参与挑战
+  }
+
+  // 刷新帖子
+  Future<void> refreshPosts() async {
+    await refreshFollowingPosts();
   }
 }

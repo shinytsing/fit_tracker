@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/custom_widgets.dart';
+import '../../../../core/services/bmi_api_service.dart';
 
 /// BMI 页面
 class BMIPage extends ConsumerStatefulWidget {
@@ -20,6 +21,8 @@ class _BMIPageState extends ConsumerState<BMIPage> {
   final _weightController = TextEditingController();
   double? _bmi;
   String? _bmiCategory;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -101,8 +104,17 @@ class _BMIPageState extends ConsumerState<BMIPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _calculateBMI,
-                        child: const Text('计算 BMI'),
+                        onPressed: _isLoading ? null : _calculateBMI,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text('计算 BMI'),
                       ),
                     ),
                   ],
@@ -110,6 +122,29 @@ class _BMIPageState extends ConsumerState<BMIPage> {
               ),
             ),
             
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.errorColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: AppTheme.errorColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: AppTheme.errorColor),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (_bmi != null) ...[
               const SizedBox(height: 24),
               
@@ -169,30 +204,67 @@ class _BMIPageState extends ConsumerState<BMIPage> {
     );
   }
 
-  void _calculateBMI() {
+  Future<void> _calculateBMI() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    final height = double.parse(_heightController.text);
-    final weight = double.parse(_weightController.text);
-    
-    // BMI = 体重(kg) / 身高(m)²
-    final heightInMeters = height / 100;
-    _bmi = weight / (heightInMeters * heightInMeters);
-    
-    // 确定 BMI 分类
-    if (_bmi! < 18.5) {
-      _bmiCategory = '偏瘦';
-    } else if (_bmi! < 25) {
-      _bmiCategory = '正常';
-    } else if (_bmi! < 30) {
-      _bmiCategory = '偏胖';
-    } else {
-      _bmiCategory = '肥胖';
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final height = double.parse(_heightController.text);
+      final weight = double.parse(_weightController.text);
+      
+      // 调用真实 API 计算 BMI
+      final response = await BMIApiService.calculateBMI(
+        height: height,
+        weight: weight,
+        age: 25, // 默认年龄，实际应用中可以从用户资料获取
+        gender: 'male', // 默认性别，实际应用中可以从用户资料获取
+      );
+      
+      // 解析 API 响应
+      final bmiData = response['data'] ?? response;
+      _bmi = (bmiData['bmi'] as num).toDouble();
+      _bmiCategory = bmiData['category'] ?? _getBMICategory(_bmi!);
+      
+      // 保存 BMI 记录到后端
+      try {
+        await BMIApiService.createBMIRecord(
+          height: height,
+          weight: weight,
+          bmi: _bmi!,
+          notes: '通过 BMI 计算器计算',
+        );
+      } catch (e) {
+        // 记录保存失败不影响显示结果
+        print('保存 BMI 记录失败: $e');
+      }
+      
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'BMI 计算失败: ${e.toString()}';
+      });
     }
-    
-    setState(() {});
+  }
+
+  String _getBMICategory(double bmi) {
+    if (bmi < 18.5) {
+      return '偏瘦';
+    } else if (bmi < 25) {
+      return '正常';
+    } else if (bmi < 30) {
+      return '偏胖';
+    } else {
+      return '肥胖';
+    }
   }
 
   Color _getBMIColor(double bmi) {

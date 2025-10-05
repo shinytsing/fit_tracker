@@ -8,11 +8,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"fittracker/internal/api/handlers"
-	"fittracker/internal/api/routes"
-	"fittracker/internal/config"
-	"fittracker/internal/domain/models"
-	"fittracker/internal/infrastructure/cache"
+	"gymates/internal/api/handlers"
+	"gymates/internal/api/routes"
+	"gymates/internal/config"
+	"gymates/internal/models"
+	"gymates/internal/infrastructure/cache"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/suite"
@@ -572,7 +572,7 @@ func (suite *IntegrationTestSuite) loginTestUser() {
 	var user models.User
 	err = suite.db.Where("email = ?", "test@example.com").First(&user).Error
 	suite.NoError(err)
-	suite.userID = user.ID
+	suite.userID = user.UID
 }
 
 func (suite *IntegrationTestSuite) createTestWorkout() {

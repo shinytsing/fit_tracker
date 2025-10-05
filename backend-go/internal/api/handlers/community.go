@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"fittracker/internal/domain/models"
+	"gymates/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

@@ -40,7 +40,7 @@ services:
     environment:
       - POSTGRES_DB=fittracker
       - POSTGRES_USER=fittracker
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=fittracker123
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend-go/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql

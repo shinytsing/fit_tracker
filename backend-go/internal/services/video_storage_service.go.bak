@@ -1,0 +1,296 @@
+package services
+
+import (
+	"fmt"
+	"io"
+	"mime/multipart"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+	"gymates/internal/models"
+)
+
+// VideoStorageService 视频存储服务
+type VideoStorageService struct {
+	db           *gorm.DB
+	uploadDir    string
+	maxFileSize  int64
+	allowedTypes []string
+}
+
+// NewVideoStorageService 创建视频存储服务
+func NewVideoStorageService(db *gorm.DB) *VideoStorageService {
+	return &VideoStorageService{
+		db:           db,
+		uploadDir:    "./uploads/videos",
+		maxFileSize:  100 * 1024 * 1024, // 100MB
+		allowedTypes: []string{"video/mp4", "video/avi", "video/mov", "video/wmv", "video/flv", "video/webm"},
+	}
+}
+
+// VideoUploadResult 视频上传结果
+type VideoUploadResult struct {
+	VideoURL     string `json:"video_url"`
+	ThumbnailURL string `json:"thumbnail_url"`
+	Duration     int    `json:"duration"`
+	FileSize     int64  `json:"file_size"`
+	FileName     string `json:"file_name"`
+}
+
+// UploadVideo 上传视频文件
+func (vs *VideoStorageService) UploadVideo(
+	userID string,
+	videoFile multipart.File,
+	videoHeader *multipart.FileHeader,
+	thumbnailFile *multipart.FileHeader,
+	duration int,
+) (*VideoUploadResult, error) {
+	// 验证文件类型
+	if !vs.isValidVideoType(videoHeader.Header.Get("Content-Type")) {
+		return nil, fmt.Errorf("不支持的视频文件类型")
+	}
+
+	// 验证文件大小
+	if videoHeader.Size > vs.maxFileSize {
+		return nil, fmt.Errorf("视频文件大小超出限制")
+	}
+
+	// 生成唯一文件名
+	videoID := uuid.New().String()
+	videoExt := filepath.Ext(videoHeader.Filename)
+	videoFileName := fmt.Sprintf("%s_%d%s", videoID, time.Now().Unix(), videoExt)
+
+	// 创建上传目录
+	videoDir := filepath.Join(vs.uploadDir, "videos")
+	if err := os.MkdirAll(videoDir, 0755); err != nil {
+		return nil, fmt.Errorf("创建视频目录失败: %v", err)
+	}
+
+	// 保存视频文件
+	videoPath := filepath.Join(videoDir, videoFileName)
+	videoURL, err := vs.saveFile(videoFile, videoPath)
+	if err != nil {
+		return nil, fmt.Errorf("保存视频文件失败: %v", err)
+	}
+
+	// 处理缩略图
+	var thumbnailURL string
+	if thumbnailFile != nil {
+		thumbnailExt := filepath.Ext(thumbnailFile.Filename)
+		thumbnailFileName := fmt.Sprintf("%s_thumb%s", videoID, thumbnailExt)
+		thumbnailDir := filepath.Join(vs.uploadDir, "thumbnails")
+
+		if err := os.MkdirAll(thumbnailDir, 0755); err != nil {
+			return nil, fmt.Errorf("创建缩略图目录失败: %v", err)
+		}
+
+		thumbnailPath := filepath.Join(thumbnailDir, thumbnailFileName)
+		thumbnailFileReader, err := thumbnailFile.Open()
+		if err != nil {
+			return nil, fmt.Errorf("打开缩略图文件失败: %v", err)
+		}
+		defer thumbnailFileReader.Close()
+
+		thumbnailURL, err = vs.saveFile(thumbnailFileReader, thumbnailPath)
+		if err != nil {
+			return nil, fmt.Errorf("保存缩略图失败: %v", err)
+		}
+	} else {
+		// 如果没有提供缩略图，尝试从视频生成
+		thumbnailURL, err = vs.generateThumbnail(videoPath, videoID)
+		if err != nil {
+			// 缩略图生成失败不影响视频上传
+			fmt.Printf("生成缩略图失败: %v\n", err)
+		}
+	}
+
+	// 保存到数据库
+	mediaFile := &models.MediaFile{
+		UserID:   parseUserID(userID),
+		Type:     "video",
+		URL:      videoURL,
+		FileName: videoHeader.Filename,
+		FileSize: videoHeader.Size,
+		MimeType: videoHeader.Header.Get("Content-Type"),
+	}
+
+	if err := vs.db.Create(mediaFile).Error; err != nil {
+		// 数据库保存失败，清理文件
+		os.Remove(videoPath)
+		if thumbnailURL != "" {
+			os.Remove(strings.TrimPrefix(thumbnailURL, "/"))
+		}
+		return nil, fmt.Errorf("保存媒体文件记录失败: %v", err)
+	}
+
+	return &VideoUploadResult{
+		VideoURL:     videoURL,
+		ThumbnailURL: thumbnailURL,
+		Duration:     duration,
+		FileSize:     videoHeader.Size,
+		FileName:     videoHeader.Filename,
+	}, nil
+}
+
+// saveFile 保存文件到磁盘
+func (vs *VideoStorageService) saveFile(src io.Reader, dstPath string) (string, error) {
+	// 创建目标文件
+	dst, err := os.Create(dstPath)
+	if err != nil {
+		return "", err
+	}
+	defer dst.Close()
+
+	// 复制文件内容
+	_, err = io.Copy(dst, src)
+	if err != nil {
+		return "", err
+	}
+
+	// 返回相对URL路径
+	relativePath := strings.TrimPrefix(dstPath, ".")
+	return relativePath, nil
+}
+
+// generateThumbnail 生成视频缩略图
+func (vs *VideoStorageService) generateThumbnail(videoPath, videoID string) (string, error) {
+	// 这里应该使用FFmpeg生成缩略图
+	// 为了简化，我们返回一个占位符
+	// 实际项目中应该调用FFmpeg命令
+
+	thumbnailDir := filepath.Join(vs.uploadDir, "thumbnails")
+	if err := os.MkdirAll(thumbnailDir, 0755); err != nil {
+		return "", err
+	}
+
+	thumbnailFileName := fmt.Sprintf("%s_thumb.jpg", videoID)
+	thumbnailPath := filepath.Join(thumbnailDir, thumbnailFileName)
+
+	// 创建占位符缩略图文件
+	placeholderContent := []byte("placeholder thumbnail")
+	if err := os.WriteFile(thumbnailPath, placeholderContent, 0644); err != nil {
+		return "", err
+	}
+
+	return strings.TrimPrefix(thumbnailPath, "."), nil
+}
+
+// isValidVideoType 验证视频文件类型
+func (vs *VideoStorageService) isValidVideoType(contentType string) bool {
+	for _, allowedType := range vs.allowedTypes {
+		if strings.EqualFold(contentType, allowedType) {
+			return true
+		}
+	}
+	return false
+}
+
+// GetVideoURL 获取视频URL
+func (vs *VideoStorageService) GetVideoURL(videoID string) (string, error) {
+	var mediaFile models.MediaFile
+	if err := vs.db.Where("id = ? AND type = ?", videoID, "video").First(&mediaFile).Error; err != nil {
+		return "", fmt.Errorf("视频文件不存在: %v", err)
+	}
+
+	return mediaFile.URL, nil
+}
+
+// DeleteVideo 删除视频文件
+func (vs *VideoStorageService) DeleteVideo(videoID string) error {
+	var mediaFile models.MediaFile
+	if err := vs.db.Where("id = ? AND type = ?", videoID, "video").First(&mediaFile).Error; err != nil {
+		return fmt.Errorf("视频文件不存在: %v", err)
+	}
+
+	// 删除文件
+	filePath := strings.TrimPrefix(mediaFile.URL, ".")
+	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("删除视频文件失败: %v", err)
+	}
+
+	// 删除缩略图
+	thumbnailPath := strings.Replace(filePath, "/videos/", "/thumbnails/", 1)
+	thumbnailPath = strings.TrimSuffix(thumbnailPath, filepath.Ext(thumbnailPath)) + "_thumb.jpg"
+	if err := os.Remove(thumbnailPath); err != nil && !os.IsNotExist(err) {
+		// 缩略图删除失败不影响主流程
+		fmt.Printf("删除缩略图失败: %v\n", err)
+	}
+
+	// 删除数据库记录
+	if err := vs.db.Delete(&mediaFile).Error; err != nil {
+		return fmt.Errorf("删除媒体文件记录失败: %v", err)
+	}
+
+	return nil
+}
+
+// GetVideoInfo 获取视频信息
+func (vs *VideoStorageService) GetVideoInfo(videoID string) (*VideoUploadResult, error) {
+	var mediaFile models.MediaFile
+	if err := vs.db.Where("id = ? AND type = ?", videoID, "video").First(&mediaFile).Error; err != nil {
+		return nil, fmt.Errorf("视频文件不存在: %v", err)
+	}
+
+	// 生成缩略图URL（假设缩略图文件名规则）
+	thumbnailURL := strings.Replace(mediaFile.URL, "/videos/", "/thumbnails/", 1)
+	thumbnailURL = strings.TrimSuffix(thumbnailURL, filepath.Ext(thumbnailURL)) + "_thumb.jpg"
+
+	return &VideoUploadResult{
+		VideoURL:     mediaFile.URL,
+		ThumbnailURL: thumbnailURL,
+		FileSize:     mediaFile.FileSize,
+		FileName:     mediaFile.FileName,
+		// Duration需要从其他地方获取，这里暂时设为0
+		Duration: 0,
+	}, nil
+}
+
+// CleanupExpiredVideos 清理过期的视频文件
+func (vs *VideoStorageService) CleanupExpiredVideos() error {
+	// 删除7天前的临时视频文件
+	expiredTime := time.Now().AddDate(0, 0, -7)
+
+	var expiredFiles []models.MediaFile
+	if err := vs.db.Where("type = ? AND created_at < ?", "video", expiredTime).Find(&expiredFiles).Error; err != nil {
+		return fmt.Errorf("查询过期视频文件失败: %v", err)
+	}
+
+	for _, file := range expiredFiles {
+		if err := vs.DeleteVideo(fmt.Sprintf("%d", file.ID)); err != nil {
+			fmt.Printf("删除过期视频文件失败: %v\n", err)
+		}
+	}
+
+	return nil
+}
+
+// GetStorageStats 获取存储统计信息
+func (vs *VideoStorageService) GetStorageStats() (map[string]interface{}, error) {
+	var totalVideos int64
+	var totalSize int64
+
+	if err := vs.db.Model(&models.MediaFile{}).Where("type = ?", "video").Count(&totalVideos).Error; err != nil {
+		return nil, fmt.Errorf("统计视频数量失败: %v", err)
+	}
+
+	if err := vs.db.Model(&models.MediaFile{}).Where("type = ?", "video").Select("COALESCE(SUM(file_size), 0)").Scan(&totalSize).Error; err != nil {
+		return nil, fmt.Errorf("统计视频总大小失败: %v", err)
+	}
+
+	return map[string]interface{}{
+		"total_videos":  totalVideos,
+		"total_size":    totalSize,
+		"total_size_mb": float64(totalSize) / (1024 * 1024),
+	}, nil
+}
+
+// 辅助函数
+func parseUserID(userID string) uint {
+	// 这里应该实现string到uint的转换
+	// 为了简化，返回一个默认值
+	return 1
+}

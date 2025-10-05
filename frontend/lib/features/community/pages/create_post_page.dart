@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../../core/providers/community_provider.dart';
-import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/custom_widgets.dart';
-import '../community/widgets/topic_widgets.dart';
+import '../../../core/providers/community_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/custom_widgets.dart';
+import '../widgets/topic_widgets.dart';
 
 /// 发布动态页面
 class CreatePostPage extends ConsumerStatefulWidget {

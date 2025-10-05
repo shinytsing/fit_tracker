@@ -1,5 +1,5 @@
-name: fittracker
-description: "FitTracker - 热血健身打卡社交应用"
+name: gymates
+description: "Gymates - 热血健身打卡社交应用"
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -50,7 +50,7 @@ dependencies:
   permission_handler: ^11.1.0
   
   # 设备信息
-  device_info_plus: ^9.1.1
+  device_info_plus: ^12.1.0
   
   # 网络检测
   connectivity_plus: ^5.0.2
@@ -62,12 +62,15 @@ dependencies:
   # 工具类
   uuid: ^4.2.1
   path_provider: ^2.1.2
+  file_picker: ^8.0.0+1
   
   # 依赖注入
   get_it: ^7.6.7
   
   # 日志
   logger: ^2.0.2+1
+  sign_in_with_apple: ^7.0.1
+  fluwx: ^5.7.2
 
 dev_dependencies:
   flutter_test:

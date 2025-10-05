@@ -11,8 +11,12 @@ import '../widgets/message_input_bar.dart';
 import '../widgets/system_notification_item.dart';
 import '../widgets/chat_header.dart';
 
-/// Tab4 - 消息页面
-/// 包含系统通知、私信聊天、群聊、视频通话等功能
+/// Tab3 - 消息页面
+/// 按照功能重排表实现：
+/// - 私信聊天：一对一聊天（文字、图片、语音）
+/// - 系统通知：点赞、评论、关注提醒、平台公告
+/// - 实时通信：WebSocket 推送
+/// - 消息管理：搜索、分类、删除、置顶
 class MessagePage extends ConsumerStatefulWidget {
   const MessagePage({super.key});
 

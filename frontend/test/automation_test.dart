@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 
-import 'package:fittracker/features/training/presentation/providers/training_provider.dart';
-import 'package:fittracker/features/community/presentation/providers/community_provider.dart';
-import 'package:fittracker/features/message/presentation/providers/message_provider.dart';
+import 'package:gymates/features/training/presentation/providers/training_provider.dart';
+import 'package:gymates/features/community/presentation/providers/community_provider.dart';
+import 'package:gymates/features/message/presentation/providers/message_provider.dart';
 
 // 生成Mock类
 @GenerateMocks([])

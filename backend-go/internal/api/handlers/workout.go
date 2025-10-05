@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"fittracker/internal/domain/models"
+	"gymates/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -100,8 +100,8 @@ func (h *Handlers) CreateWorkout(c *gin.Context) {
 		PlanID:     req.PlanID,
 		Name:       req.Name,
 		Type:       req.Type,
-		Duration:   req.Duration,
-		Calories:   req.Calories,
+		Duration:   int64(req.Duration),
+		Calories:   int64(req.Calories),
 		Difficulty: req.Difficulty,
 		Notes:      req.Notes,
 		Rating:     req.Rating,

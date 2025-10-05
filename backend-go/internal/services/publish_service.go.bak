@@ -1,0 +1,77 @@
+package services
+
+import (
+	"gymates/internal/models"
+	"gorm.io/gorm"
+)
+
+// PublishService 发布服务
+type PublishService struct {
+	db *gorm.DB
+}
+
+// NewPublishService 创建发布服务
+func NewPublishService(db *gorm.DB) *PublishService {
+	return &PublishService{
+		db: db,
+	}
+}
+
+// GetPublishStats 获取发布统计
+func (s *PublishService) GetPublishStats(userID uint) (map[string]interface{}, error) {
+	stats := make(map[string]interface{})
+
+	// 获取动态数量
+	var postCount int64
+	s.db.Model(&models.Post{}).Where("user_id = ?", userID).Count(&postCount)
+	stats["post_count"] = postCount
+
+	// 获取总点赞数
+	var totalLikes int64
+	s.db.Model(&models.Like{}).Joins("JOIN posts ON likes.post_id = posts.id").Where("posts.user_id = ?", userID).Count(&totalLikes)
+	stats["total_likes"] = totalLikes
+
+	// 获取总评论数
+	var totalComments int64
+	s.db.Model(&models.Comment{}).Joins("JOIN posts ON comments.post_id = posts.id").Where("posts.user_id = ?", userID).Count(&totalComments)
+	stats["total_comments"] = totalComments
+
+	// 获取总浏览数
+	var totalViews int64
+	s.db.Model(&models.Post{}).Where("user_id = ?", userID).Select("COALESCE(SUM(view_count), 0)").Scan(&totalViews)
+	stats["total_views"] = totalViews
+
+	return stats, nil
+}
+
+// GetPublishHistory 获取发布历史
+func (s *PublishService) GetPublishHistory(userID uint, page, limit int) ([]*models.Post, int64, error) {
+	var posts []*models.Post
+	var total int64
+
+	offset := (page - 1) * limit
+
+	err := s.db.Model(&models.Post{}).Where("user_id = ?", userID).Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	err = s.db.Where("user_id = ?", userID).
+		Preload("User").
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&posts).Error
+
+	return posts, total, err
+}
+
+// DeletePost 删除动态
+func (s *PublishService) DeletePost(postID uint, userID uint) error {
+	return s.db.Model(&models.Post{}).Where("id = ? AND user_id = ?", postID, userID).Update("NOW()", "NOW()").Error
+}
+
+// UpdatePost 更新动态
+func (s *PublishService) UpdatePost(postID uint, userID uint, updates map[string]interface{}) error {
+	return s.db.Model(&models.Post{}).Where("id = ? AND user_id = ?", postID, userID).Updates(updates).Error
+}

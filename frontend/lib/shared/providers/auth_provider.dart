@@ -4,6 +4,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/base_providers.dart';
 import '../../core/errors/app_errors.dart';
+import '../../core/services/auth_api_service.dart';
 
 /// 用户模型
 class User {
@@ -116,22 +117,27 @@ class AuthProvider extends BaseProvider<AuthState> {
     setLoading();
     
     try {
-      // TODO: 实现实际的登录逻辑
-      await Future.delayed(const Duration(seconds: 1)); // 模拟网络请求
+      // 调用真实 API
+      final response = await AuthApiService.login(
+        username: email,
+        password: password,
+      );
       
-      // 模拟登录成功
+      // 解析响应数据
+      final userData = response['user'] ?? response;
       final user = User(
-        id: '1',
-        email: email,
-        name: 'Test User',
-        createdAt: DateTime.now(),
+        id: userData['id'].toString(),
+        email: userData['email'] ?? email,
+        name: userData['username'] ?? userData['name'] ?? '用户',
+        avatar: userData['avatar_url'],
+        createdAt: DateTime.parse(userData['created_at'] ?? DateTime.now().toIso8601String()),
         lastLoginAt: DateTime.now(),
       );
       
       setSuccess();
       state = state.copyWith(
         user: user,
-        token: 'mock_token',
+        token: response['access_token'] ?? response['token'],
         isAuthenticated: true,
       );
     } catch (e) {
@@ -144,21 +150,27 @@ class AuthProvider extends BaseProvider<AuthState> {
     setLoading();
     
     try {
-      // TODO: 实现实际的注册逻辑
-      await Future.delayed(const Duration(seconds: 1)); // 模拟网络请求
-      
-      // 模拟注册成功
-      final user = User(
-        id: '1',
+      // 调用真实 API
+      final response = await AuthApiService.register(
+        username: name,
         email: email,
-        name: name,
-        createdAt: DateTime.now(),
+        password: password,
+      );
+      
+      // 解析响应数据
+      final userData = response['user'] ?? response;
+      final user = User(
+        id: userData['id'].toString(),
+        email: userData['email'] ?? email,
+        name: userData['username'] ?? name,
+        avatar: userData['avatar_url'],
+        createdAt: DateTime.parse(userData['created_at'] ?? DateTime.now().toIso8601String()),
       );
       
       setSuccess();
       state = state.copyWith(
         user: user,
-        token: 'mock_token',
+        token: response['access_token'] ?? response['token'],
         isAuthenticated: true,
       );
     } catch (e) {
@@ -171,8 +183,8 @@ class AuthProvider extends BaseProvider<AuthState> {
     setLoading();
     
     try {
-      // TODO: 实现实际的登出逻辑
-      await Future.delayed(const Duration(milliseconds: 500)); // 模拟网络请求
+      // 调用真实 API
+      await AuthApiService.logout();
       
       setSuccess();
       state = const AuthState(loadingState: LoadingState.success);
@@ -211,24 +223,33 @@ class AuthProvider extends BaseProvider<AuthState> {
     setLoading();
     
     try {
-      // TODO: 实现实际的检查逻辑
-      await Future.delayed(const Duration(milliseconds: 500)); // 模拟网络请求
+      // 检查是否已登录
+      final isLoggedIn = await AuthApiService.isLoggedIn();
       
-      // 模拟已登录状态
-      final user = User(
-        id: '1',
-        email: 'test@example.com',
-        name: 'Test User',
-        createdAt: DateTime.now(),
-        lastLoginAt: DateTime.now(),
-      );
-      
-      setSuccess();
-      state = state.copyWith(
-        user: user,
-        token: 'mock_token',
-        isAuthenticated: true,
-      );
+      if (isLoggedIn) {
+        // 获取当前用户信息
+        final response = await AuthApiService.getCurrentUser();
+        final userData = response['user'] ?? response;
+        
+        final user = User(
+          id: userData['id'].toString(),
+          email: userData['email'] ?? '',
+          name: userData['username'] ?? userData['name'] ?? '用户',
+          avatar: userData['avatar_url'],
+          createdAt: DateTime.parse(userData['created_at'] ?? DateTime.now().toIso8601String()),
+          lastLoginAt: DateTime.parse(userData['last_login_at'] ?? DateTime.now().toIso8601String()),
+        );
+        
+        setSuccess();
+        state = state.copyWith(
+          user: user,
+          token: 'stored_token',
+          isAuthenticated: true,
+        );
+      } else {
+        setSuccess();
+        state = const AuthState(loadingState: LoadingState.success);
+      }
     } catch (e) {
       setError(AuthError(message: '检查认证状态失败: ${e.toString()}'));
     }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"fittracker/internal/models"
+	"gymates/internal/models"
 
 	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
@@ -101,16 +101,10 @@ func (s *WorkoutService) CreateWorkoutSession(session *models.WorkoutSession, ex
 
 	// 创建训练动作
 	for _, exerciseReq := range exercises {
-		exercise := &models.WorkoutExercise{
-			SessionID: session.ID,
-			Name:      exerciseReq.Name,
-			Category:  exerciseReq.Category,
-			Sets:      exerciseReq.Sets,
-			Reps:      exerciseReq.Reps,
-			Weight:    exerciseReq.Weight,
-			Duration:  exerciseReq.Duration,
-			RestTime:  exerciseReq.RestTime,
-			Notes:     exerciseReq.Notes,
+		exercise := &models.TrainingExercise{
+			PlanID:   session.ID,
+			Name:     exerciseReq.Name,
+			Category: exerciseReq.Category,
 		}
 
 		if err := tx.Create(exercise).Error; err != nil {

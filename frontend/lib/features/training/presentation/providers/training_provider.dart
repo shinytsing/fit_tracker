@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/services/workout_api_service.dart';
 import '../../../../core/models/models.dart';
 import '../../domain/models/training_models.dart';
 
@@ -81,22 +82,8 @@ enum TrainingPlanStatus {
   completed,
   paused,
   cancelled,
-}
-
-/// 动作类型
-enum ExerciseType {
-  strength,
-  cardio,
-  flexibility,
-  balance,
-  sports,
-}
-
-/// 训练状态
-enum TrainingStatus {
   planned,
   inProgress,
-  completed,
   skipped,
 }
 
@@ -254,27 +241,44 @@ class TrainingNotifier extends StateNotifier<TrainingState> {
     state = state.copyWith(isGeneratingPlan: true, error: null);
 
     try {
-      final response = await ApiService.instance.post('/training/plans/ai-generate', data: {
-        'goal': goal,
-        'duration': duration,
-        'difficulty': difficulty.name,
-        'preferences': preferences,
-        'available_equipment': availableEquipment,
-      });
+      // 调用真实 API 生成 AI 训练计划
+      final response = await WorkoutApiService.generateAIPlan(
+        goal: goal,
+        difficulty: difficulty.name,
+        duration: duration,
+        availableEquipment: availableEquipment,
+        userPreferences: {'preferences': preferences},
+      );
+      
+      // 解析响应数据
+      final planData = response['plan'] ?? response;
+      final aiSuggestions = response['ai_suggestions'] ?? [];
+      final confidenceScore = response['confidence_score'] ?? 0.0;
+      
+      final plan = TrainingPlan(
+        id: planData['id'].toString(),
+        name: planData['name'] ?? 'AI训练计划',
+        description: planData['description'] ?? '',
+        type: TrainingPlanType.ai.name,
+        difficulty: difficulty.name,
+        duration: duration,
+        status: TrainingPlanStatus.draft.name,
+        exercises: (planData['exercises'] as List<dynamic>?)
+            ?.map((e) => TrainingExercise.fromJson(e as Map<String, dynamic>))
+            .cast<Exercise>()
+            .toList() ?? [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        isAi: true,
+        isPublic: false,
+      );
 
-      if (response.statusCode == 200) {
-        final data = response.data['data'];
-        final plan = TrainingPlan.fromJson(data);
-        
-        state = state.copyWith(
-          isGeneratingPlan: false,
-          plans: [...state.plans, plan],
-        );
-        
-        return plan;
-      } else {
-        throw Exception(response.data['error'] ?? '生成训练计划失败');
-      }
+      state = state.copyWith(
+        isGeneratingPlan: false,
+        plans: [...state.plans, plan],
+      );
+
+      return plan;
     } catch (e) {
       state = state.copyWith(
         isGeneratingPlan: false,

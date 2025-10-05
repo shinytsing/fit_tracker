@@ -1,0 +1,1624 @@
+package routes
+
+import (
+	"gymates/internal/api"
+
+	"github.com/gin-gonic/gin"
+)
+
+// 路由处理器结构体已在 routes.go 中定义
+
+// 以下是所有路由处理方法的占位符实现
+// 实际实现需要调用对应的服务方法
+
+// 用户相关路由处理方法
+func (h *RouteHandler) Register(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.Register(c)
+}
+
+func (h *RouteHandler) Login(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.Login(c)
+}
+
+func (h *RouteHandler) ThirdPartyLogin(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.ThirdPartyLogin(c)
+}
+
+func (h *RouteHandler) RefreshToken(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "RefreshToken endpoint"})
+}
+
+func (h *RouteHandler) ForgotPassword(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "ForgotPassword endpoint"})
+}
+
+func (h *RouteHandler) ResetPassword(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "ResetPassword endpoint"})
+}
+
+func (h *RouteHandler) GetProfile(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetProfile(c)
+}
+
+func (h *RouteHandler) UpdateProfile(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.UpdateProfile(c)
+}
+
+func (h *RouteHandler) UploadAvatar(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UploadAvatar endpoint"})
+}
+
+func (h *RouteHandler) DeleteAvatar(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "DeleteAvatar endpoint"})
+}
+
+func (h *RouteHandler) GetSettings(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetSettings endpoint"})
+}
+
+func (h *RouteHandler) UpdateSettings(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UpdateSettings endpoint"})
+}
+
+func (h *RouteHandler) Logout(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "Logout endpoint"})
+}
+
+// 用户个人资料相关方法
+func (h *RouteHandler) CreateUserProfile(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.CreateUserProfile(c)
+}
+
+func (h *RouteHandler) GetUserProfile(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetUserProfile(c)
+}
+
+func (h *RouteHandler) UpdateUserProfile(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.UpdateUserProfile(c)
+}
+
+func (h *RouteHandler) DeleteUserProfile(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.DeleteUserProfile(c)
+}
+
+func (h *RouteHandler) CheckUserProfileExists(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.CheckUserProfileExists(c)
+}
+
+// 训练相关路由处理方法
+func (h *RouteHandler) GetTodayPlan(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetTodayPlan endpoint"})
+}
+
+func (h *RouteHandler) GetHistoryPlans(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetHistoryPlans endpoint"})
+}
+
+func (h *RouteHandler) CreatePlan(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CreatePlan endpoint"})
+}
+
+func (h *RouteHandler) UpdatePlan(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UpdatePlan endpoint"})
+}
+
+func (h *RouteHandler) DeletePlan(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "DeletePlan endpoint"})
+}
+
+func (h *RouteHandler) GenerateAIPlan(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GenerateAIPlan endpoint"})
+}
+
+func (h *RouteHandler) AIRecommendTraining(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.AIRecommendTraining(c)
+}
+
+func (h *RouteHandler) StartWorkout(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "StartWorkout endpoint"})
+}
+
+func (h *RouteHandler) CompleteWorkout(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CompleteWorkout endpoint"})
+}
+
+func (h *RouteHandler) CompleteExercise(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CompleteExercise endpoint"})
+}
+
+func (h *RouteHandler) GetActiveWorkout(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetActiveWorkout endpoint"})
+}
+
+func (h *RouteHandler) GetTrainingStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetTrainingStats endpoint"})
+}
+
+func (h *RouteHandler) GetWeeklyStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetWeeklyStats endpoint"})
+}
+
+func (h *RouteHandler) GetMonthlyStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetMonthlyStats endpoint"})
+}
+
+func (h *RouteHandler) GetAchievements(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetAchievements endpoint"})
+}
+
+func (h *RouteHandler) ClaimAchievement(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "ClaimAchievement endpoint"})
+}
+
+func (h *RouteHandler) GetCheckIns(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetCheckIns endpoint"})
+}
+
+func (h *RouteHandler) CreateCheckIn(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CreateCheckIn endpoint"})
+}
+
+func (h *RouteHandler) GetCheckInStreak(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetCheckInStreak endpoint"})
+}
+
+// 社区相关路由处理方法
+func (h *RouteHandler) GetFollowingPosts(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetFollowingPosts endpoint"})
+}
+
+func (h *RouteHandler) GetRecommendPosts(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetRecommendPosts endpoint"})
+}
+
+func (h *RouteHandler) GetTrendingPosts(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetTrendingPosts endpoint"})
+}
+
+func (h *RouteHandler) CreatePost(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CreatePost endpoint"})
+}
+
+func (h *RouteHandler) GetPost(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetPost endpoint"})
+}
+
+func (h *RouteHandler) UpdatePost(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UpdatePost endpoint"})
+}
+
+func (h *RouteHandler) DeletePost(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "DeletePost endpoint"})
+}
+
+func (h *RouteHandler) LikePost(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "LikePost endpoint"})
+}
+
+func (h *RouteHandler) UnlikePost(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UnlikePost endpoint"})
+}
+
+func (h *RouteHandler) CommentPost(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CommentPost endpoint"})
+}
+
+func (h *RouteHandler) GetPostComments(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetPostComments endpoint"})
+}
+
+func (h *RouteHandler) SharePost(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "SharePost endpoint"})
+}
+
+func (h *RouteHandler) FavoritePost(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "FavoritePost endpoint"})
+}
+
+func (h *RouteHandler) UnfavoritePost(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UnfavoritePost endpoint"})
+}
+
+func (h *RouteHandler) GetTrendingTopics(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetTrendingTopics endpoint"})
+}
+
+func (h *RouteHandler) GetPostsByTopic(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetPostsByTopic endpoint"})
+}
+
+func (h *RouteHandler) FollowUser(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "FollowUser endpoint"})
+}
+
+func (h *RouteHandler) UnfollowUser(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UnfollowUser endpoint"})
+}
+
+func (h *RouteHandler) GetUserFollowers(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetUserFollowers endpoint"})
+}
+
+func (h *RouteHandler) GetUserFollowing(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetUserFollowing endpoint"})
+}
+
+// 消息相关路由处理方法
+func (h *RouteHandler) GetChats(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetChats(c)
+}
+
+func (h *RouteHandler) CreateChat(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.CreateChat(c)
+}
+
+func (h *RouteHandler) GetChat(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetChat endpoint"})
+}
+
+func (h *RouteHandler) UpdateChat(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UpdateChat endpoint"})
+}
+
+func (h *RouteHandler) DeleteChat(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "DeleteChat endpoint"})
+}
+
+func (h *RouteHandler) GetChatMessages(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetChatMessages endpoint"})
+}
+
+func (h *RouteHandler) SendMessage(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.SendMessage(c)
+}
+
+func (h *RouteHandler) UpdateMessage(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UpdateMessage endpoint"})
+}
+
+func (h *RouteHandler) DeleteMessage(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "DeleteMessage endpoint"})
+}
+
+func (h *RouteHandler) MarkMessageRead(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "MarkMessageRead endpoint"})
+}
+
+func (h *RouteHandler) GetNotifications(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetNotifications(c)
+}
+
+func (h *RouteHandler) MarkNotificationRead(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "MarkNotificationRead endpoint"})
+}
+
+func (h *RouteHandler) ClearNotifications(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "ClearNotifications endpoint"})
+}
+
+func (h *RouteHandler) GetUnreadNotificationCount(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetUnreadNotificationCount endpoint"})
+}
+
+func (h *RouteHandler) GetSystemMessages(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetSystemMessages endpoint"})
+}
+
+// 健身房相关路由处理方法
+func (h *RouteHandler) GetGyms(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetGyms(c)
+}
+
+func (h *RouteHandler) GetGymByID(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetGymByID(c)
+}
+
+func (h *RouteHandler) GetNearbyGyms(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetNearbyGyms endpoint"})
+}
+
+func (h *RouteHandler) SearchGyms(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "SearchGyms endpoint"})
+}
+
+func (h *RouteHandler) CreateGym(c *gin.Context) {
+	// 使用实际的API处理器
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.CreateGym(c)
+}
+
+func (h *RouteHandler) UpdateGym(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UpdateGym endpoint"})
+}
+
+func (h *RouteHandler) DeleteGym(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "DeleteGym endpoint"})
+}
+
+func (h *RouteHandler) JoinGym(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "JoinGym endpoint"})
+}
+
+func (h *RouteHandler) AcceptJoinRequest(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "AcceptJoinRequest endpoint"})
+}
+
+func (h *RouteHandler) RejectJoinRequest(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "RejectJoinRequest endpoint"})
+}
+
+func (h *RouteHandler) CancelJoinRequest(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CancelJoinRequest endpoint"})
+}
+
+func (h *RouteHandler) GetJoinRequests(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetJoinRequests endpoint"})
+}
+
+func (h *RouteHandler) CreateGymDiscount(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CreateGymDiscount endpoint"})
+}
+
+func (h *RouteHandler) GetGymDiscounts(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetGymDiscounts endpoint"})
+}
+
+func (h *RouteHandler) UpdateGymDiscount(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UpdateGymDiscount endpoint"})
+}
+
+func (h *RouteHandler) DeleteGymDiscount(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "DeleteGymDiscount endpoint"})
+}
+
+func (h *RouteHandler) CreateGymReview(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CreateGymReview endpoint"})
+}
+
+func (h *RouteHandler) GetGymReviews(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetGymReviews endpoint"})
+}
+
+func (h *RouteHandler) UpdateGymReview(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UpdateGymReview endpoint"})
+}
+
+func (h *RouteHandler) DeleteGymReview(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "DeleteGymReview endpoint"})
+}
+
+// 搭子相关路由处理方法
+func (h *RouteHandler) GetBuddyGroups(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetBuddyGroups endpoint"})
+}
+
+func (h *RouteHandler) CreateBuddyGroup(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CreateBuddyGroup endpoint"})
+}
+
+func (h *RouteHandler) GetBuddyGroup(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetBuddyGroup endpoint"})
+}
+
+func (h *RouteHandler) UpdateBuddyGroup(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UpdateBuddyGroup endpoint"})
+}
+
+func (h *RouteHandler) DeleteBuddyGroup(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "DeleteBuddyGroup endpoint"})
+}
+
+func (h *RouteHandler) JoinBuddyGroup(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "JoinBuddyGroup endpoint"})
+}
+
+func (h *RouteHandler) LeaveBuddyGroup(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "LeaveBuddyGroup endpoint"})
+}
+
+func (h *RouteHandler) KickBuddyGroupMember(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "KickBuddyGroupMember endpoint"})
+}
+
+func (h *RouteHandler) GetBuddyGroupMembers(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetBuddyGroupMembers endpoint"})
+}
+
+func (h *RouteHandler) GetBuddyRecommendations(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetBuddyRecommendations endpoint"})
+}
+
+func (h *RouteHandler) InviteBuddy(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "InviteBuddy endpoint"})
+}
+
+func (h *RouteHandler) GetBuddyInvitations(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetBuddyInvitations endpoint"})
+}
+
+func (h *RouteHandler) AcceptBuddyInvitation(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "AcceptBuddyInvitation endpoint"})
+}
+
+func (h *RouteHandler) RejectBuddyInvitation(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "RejectBuddyInvitation endpoint"})
+}
+
+func (h *RouteHandler) GetBuddyActivities(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetBuddyActivities endpoint"})
+}
+
+func (h *RouteHandler) CreateBuddyActivity(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CreateBuddyActivity endpoint"})
+}
+
+func (h *RouteHandler) GetBuddyActivity(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetBuddyActivity endpoint"})
+}
+
+func (h *RouteHandler) UpdateBuddyActivity(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UpdateBuddyActivity endpoint"})
+}
+
+func (h *RouteHandler) DeleteBuddyActivity(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "DeleteBuddyActivity endpoint"})
+}
+
+// 统计相关路由处理方法
+func (h *RouteHandler) GetPersonalStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetPersonalStats endpoint"})
+}
+
+func (h *RouteHandler) GetWeeklyPersonalStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetWeeklyPersonalStats endpoint"})
+}
+
+func (h *RouteHandler) GetMonthlyPersonalStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetMonthlyPersonalStats endpoint"})
+}
+
+func (h *RouteHandler) GetYearlyPersonalStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetYearlyPersonalStats endpoint"})
+}
+
+func (h *RouteHandler) GetCaloriesStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetCaloriesStats endpoint"})
+}
+
+func (h *RouteHandler) GetDurationStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetDurationStats endpoint"})
+}
+
+func (h *RouteHandler) GetStreakStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetStreakStats endpoint"})
+}
+
+func (h *RouteHandler) GetSocialStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetSocialStats endpoint"})
+}
+
+func (h *RouteHandler) GetFollowersStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetFollowersStats endpoint"})
+}
+
+func (h *RouteHandler) GetPostsStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetPostsStats endpoint"})
+}
+
+func (h *RouteHandler) GetInteractionsStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetInteractionsStats endpoint"})
+}
+
+func (h *RouteHandler) GetAchievementsStats(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetAchievementsStats endpoint"})
+}
+
+func (h *RouteHandler) GetAchievementsProgress(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetAchievementsProgress endpoint"})
+}
+
+func (h *RouteHandler) GetLeaderboard(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetLeaderboard endpoint"})
+}
+
+func (h *RouteHandler) GetWeeklyLeaderboard(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetWeeklyLeaderboard endpoint"})
+}
+
+func (h *RouteHandler) GetMonthlyLeaderboard(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetMonthlyLeaderboard endpoint"})
+}
+
+// AI相关路由处理方法 (转发到FastAPI)
+func (h *RouteHandler) GenerateTrainingPlan(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GenerateTrainingPlan endpoint"})
+}
+
+func (h *RouteHandler) GenerateCustomTrainingPlan(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GenerateCustomTrainingPlan endpoint"})
+}
+
+func (h *RouteHandler) OptimizeTrainingPlan(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "OptimizeTrainingPlan endpoint"})
+}
+
+func (h *RouteHandler) GenerateNutritionPlan(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GenerateNutritionPlan endpoint"})
+}
+
+func (h *RouteHandler) GenerateCustomNutritionPlan(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GenerateCustomNutritionPlan endpoint"})
+}
+
+func (h *RouteHandler) AnalyzeNutrition(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "AnalyzeNutrition endpoint"})
+}
+
+func (h *RouteHandler) AIChat(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "AIChat endpoint"})
+}
+
+func (h *RouteHandler) GetAIChatHistory(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetAIChatHistory endpoint"})
+}
+
+func (h *RouteHandler) ClearAIChatHistory(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "ClearAIChatHistory endpoint"})
+}
+
+func (h *RouteHandler) AnalyzeExercise(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "AnalyzeExercise endpoint"})
+}
+
+func (h *RouteHandler) CheckExerciseForm(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "CheckExerciseForm endpoint"})
+}
+
+func (h *RouteHandler) AnalyzeWorkout(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "AnalyzeWorkout endpoint"})
+}
+
+func (h *RouteHandler) GetHealthAdvice(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetHealthAdvice endpoint"})
+}
+
+func (h *RouteHandler) GenerateRecoveryPlan(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GenerateRecoveryPlan endpoint"})
+}
+
+func (h *RouteHandler) GetInjuryPreventionTips(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetInjuryPreventionTips endpoint"})
+}
+
+// 媒体上传相关方法
+func (h *RouteHandler) UploadMedia(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UploadMedia endpoint"})
+}
+
+func (h *RouteHandler) UploadVideo(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UploadVideo endpoint"})
+}
+
+// 视频通话相关方法
+func (h *RouteHandler) StartVideoCall(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "StartVideoCall endpoint"})
+}
+
+func (h *RouteHandler) AcceptVideoCall(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "AcceptVideoCall endpoint"})
+}
+
+func (h *RouteHandler) RejectVideoCall(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "RejectVideoCall endpoint"})
+}
+
+func (h *RouteHandler) EndVideoCall(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "EndVideoCall endpoint"})
+}
+
+func (h *RouteHandler) GetVideoCallHistory(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetVideoCallHistory endpoint"})
+}
+
+// AIProxy AI代理处理器 - 转发请求到FastAPI
+func (h *RouteHandler) AIProxy(c *gin.Context) {
+	// 这里应该实现代理逻辑，转发到FastAPI服务
+	// 暂时返回占位符响应
+	c.JSON(200, gin.H{
+		"message": "AI Proxy endpoint - forwarding to FastAPI",
+		"path":    c.Param("path"),
+		"method":  c.Request.Method,
+	})
+}
+
+// 视频消息相关方法
+func (h *RouteHandler) SendVideoMessage(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "SendVideoMessage endpoint"})
+}
+
+func (h *RouteHandler) GetVideoMessages(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "GetVideoMessages endpoint"})
+}
+
+func (h *RouteHandler) UpdateVideoMessageStatus(c *gin.Context) {
+	c.JSON(200, gin.H{"message": "UpdateVideoMessageStatus endpoint"})
+}
+
+// 搭子相关方法
+func (h *RouteHandler) GetBuddies(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetBuddies(c)
+}
+
+func (h *RouteHandler) AddBuddy(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.AddBuddy(c)
+}
+
+func (h *RouteHandler) RemoveBuddy(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.RemoveBuddy(c)
+}
+
+// 训练计划相关方法
+func (h *RouteHandler) GetTrainingPlans(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetTrainingPlans(c)
+}
+
+func (h *RouteHandler) CreateTrainingPlan(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.CreateTrainingPlan(c)
+}
+
+func (h *RouteHandler) GetTrainingPlan(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetTrainingPlan(c)
+}
+
+func (h *RouteHandler) UpdateTrainingPlan(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.UpdateTrainingPlan(c)
+}
+
+func (h *RouteHandler) DeleteTrainingPlan(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.DeleteTrainingPlan(c)
+}
+
+// 社区相关方法
+func (h *RouteHandler) GetCommunityPosts(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetCommunityPosts(c)
+}
+
+func (h *RouteHandler) CreateCommunityPost(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.CreateCommunityPost(c)
+}
+
+func (h *RouteHandler) GetCommunityPost(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetCommunityPost(c)
+}
+
+func (h *RouteHandler) UpdateCommunityPost(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.UpdateCommunityPost(c)
+}
+
+func (h *RouteHandler) DeleteCommunityPost(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.DeleteCommunityPost(c)
+}
+
+func (h *RouteHandler) LikeCommunityPost(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.LikeCommunityPost(c)
+}
+
+func (h *RouteHandler) CommentCommunityPost(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.CommentCommunityPost(c)
+}
+
+// 健身房相关方法
+func (h *RouteHandler) GetGym(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetGymByID(c)
+}
+
+func (h *RouteHandler) GetGymBuddies(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetGymBuddies(c)
+}
+
+// 休息相关方法
+func (h *RouteHandler) StartRest(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.StartRest(c)
+}
+
+func (h *RouteHandler) EndRest(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.EndRest(c)
+}
+
+func (h *RouteHandler) GetRestSessions(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetRestSessions(c)
+}
+
+func (h *RouteHandler) GetRestFeed(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetRestFeed(c)
+}
+
+func (h *RouteHandler) CreateRestPost(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.CreateRestPost(c)
+}
+
+func (h *RouteHandler) LikeRestPost(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.LikeRestPost(c)
+}
+
+func (h *RouteHandler) CommentRestPost(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.CommentRestPost(c)
+}
+
+func (h *RouteHandler) GetMessages(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetMessages(c)
+}
+
+func (h *RouteHandler) MarkMessageAsRead(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.MarkMessageAsRead(c)
+}
+
+func (h *RouteHandler) MarkNotificationAsRead(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.MarkNotificationAsRead(c)
+}
+
+// 搭子团队相关路由处理方法
+func (h *RouteHandler) GetTeams(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetTeams(c)
+}
+
+func (h *RouteHandler) CreateTeam(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.CreateTeam(c)
+}
+
+func (h *RouteHandler) GetTeamByID(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.GetTeamByID(c)
+}
+
+func (h *RouteHandler) JoinTeam(c *gin.Context) {
+	apiHandlers := api.NewHandlers(
+		h.services.UserService,
+		
+		h.services.TrainingService,
+		
+		
+		h.services.AuthService,
+		h.services.AIService,
+		h.services.MessageService,
+		h.services.TeamService,
+		
+		
+		
+		
+		
+		
+		
+	)
+	apiHandlers.JoinTeam(c)
+}

@@ -152,8 +152,8 @@ class SystemNotificationItem extends ConsumerWidget {
     
     // 根据通知类型导航到相应页面
     switch (notification.type) {
-      case 'like':
-      case 'comment':
+      case NotificationType.like:
+      case NotificationType.comment:
         if (notification.data?['post_id'] != null) {
           Navigator.pushNamed(
             context,
@@ -162,7 +162,7 @@ class SystemNotificationItem extends ConsumerWidget {
           );
         }
         break;
-      case 'follow':
+      case NotificationType.follow:
         if (notification.data?['user_id'] != null) {
           Navigator.pushNamed(
             context,
@@ -171,7 +171,7 @@ class SystemNotificationItem extends ConsumerWidget {
           );
         }
         break;
-      case 'challenge':
+      case NotificationType.challenge:
         if (notification.data?['challenge_id'] != null) {
           Navigator.pushNamed(
             context,
@@ -180,11 +180,17 @@ class SystemNotificationItem extends ConsumerWidget {
           );
         }
         break;
-      case 'achievement':
+      case NotificationType.achievement:
         Navigator.pushNamed(context, '/profile/achievements');
         break;
-      case 'system':
+      case NotificationType.system:
         // 系统通知可能不需要特殊导航
+        break;
+      case NotificationType.workout:
+        Navigator.pushNamed(context, '/training');
+        break;
+      case NotificationType.message:
+        Navigator.pushNamed(context, '/message');
         break;
     }
   }

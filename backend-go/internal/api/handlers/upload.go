@@ -16,7 +16,7 @@ import (
 
 // UploadMedia 上传媒体文件
 func (h *Handlers) UploadMedia(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	_, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "未认证用户",
@@ -120,7 +120,8 @@ func (h *Handlers) UploadMedia(c *gin.Context) {
 
 // UploadImage 上传图片文件
 func (h *Handlers) UploadImage(c *gin.Context) {
-	userID, exists := c.Get("user_id")
+	// 获取用户ID（如果需要的话）
+	_, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "未认证用户",

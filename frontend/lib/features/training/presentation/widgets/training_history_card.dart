@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/training_models.dart';
-import '../providers/training_provider.dart';
+import '../providers/training_provider.dart' as provider;
 
 class TrainingHistoryCard extends StatelessWidget {
   final TrainingPlan plan;
@@ -121,6 +121,11 @@ class TrainingHistoryCard extends StatelessWidget {
         color = Colors.grey;
         text = '已跳过';
         icon = MdiIcons.skipNext;
+        break;
+      case TrainingStatus.planned:
+        color = Colors.purple;
+        text = '已计划';
+        icon = MdiIcons.calendar;
         break;
     }
     

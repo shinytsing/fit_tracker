@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"fittracker/internal/config"
+	"gymates/internal/config"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -14,7 +14,7 @@ import (
 
 // Claims JWT声明
 type Claims struct {
-	UserID uint   `json:"user_id"`
+	UserID string `json:"user_id"`
 	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }
@@ -77,7 +77,7 @@ func validateToken(tokenString string) (*Claims, error) {
 	cfg := config.Load()
 
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(cfg.JWTSecret), nil
+		return []byte(cfg.JWT.SecretKey), nil
 	})
 
 	if err != nil {
@@ -92,21 +92,21 @@ func validateToken(tokenString string) (*Claims, error) {
 }
 
 // GenerateToken 生成JWT Token
-func GenerateToken(userID uint, email string) (string, error) {
+func GenerateToken(userID string, email string) (string, error) {
 	cfg := config.Load()
 
 	claims := &Claims{
 		UserID: userID,
 		Email:  email,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(cfg.JWTExpiration) * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(cfg.JWT.ExpiresIn) * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(cfg.JWTSecret))
+	return token.SignedString([]byte(cfg.JWT.SecretKey))
 }
 
 // OptionalAuth 可选认证中间件（不强制要求认证）

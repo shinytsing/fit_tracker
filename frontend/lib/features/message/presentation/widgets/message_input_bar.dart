@@ -6,11 +6,25 @@ import '../providers/message_provider.dart';
 class MessageInputBar extends ConsumerStatefulWidget {
   final String chatId;
   final Function(String)? onMessageSent;
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+  final Function(String)? onSendMessage;
+  final Function(String)? onSendMedia;
+  final Function(String)? onSendVoice;
+  final Function(String)? onSendLocation;
+  final Function(String)? onSendContact;
   
   const MessageInputBar({
     super.key,
     required this.chatId,
     this.onMessageSent,
+    this.controller,
+    this.focusNode,
+    this.onSendMessage,
+    this.onSendMedia,
+    this.onSendVoice,
+    this.onSendLocation,
+    this.onSendContact,
   });
 
   @override
@@ -62,9 +76,10 @@ class _MessageInputBarState extends ConsumerState<MessageInputBar> {
         chatId: widget.chatId,
         senderId: 'current_user', // TODO: 获取当前用户ID
         content: messageText,
-        type: MessageType.text.name,
+        type: MessageType.text,
         timestamp: DateTime.now(),
         createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
         isRead: false,
         isDelivered: true,
         isEdited: false,

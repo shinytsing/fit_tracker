@@ -1,4 +1,4 @@
-module fittracker
+module gymates
 
 go 1.23
 

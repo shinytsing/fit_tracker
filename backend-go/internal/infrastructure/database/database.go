@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"fittracker/internal/domain/models"
+	"gymates/internal/models"
 
 	"github.com/go-redis/redis/v8"
 	"gorm.io/driver/postgres"

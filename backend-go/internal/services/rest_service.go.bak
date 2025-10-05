@@ -1,0 +1,143 @@
+package services
+
+import (
+	"fmt"
+	"time"
+
+	"gymates/internal/models"
+
+	"gorm.io/gorm"
+)
+
+type RestService struct {
+	db *gorm.DB
+}
+
+func NewRestService(db *gorm.DB) *RestService {
+	return &RestService{
+		db: db,
+	}
+}
+
+// StartRest 开始休息
+func (s *RestService) StartRest(userID uint, req *models.StartRestRequest) (*models.RestSession, error) {
+	session := &models.RestSession{
+		UserID:    userID,
+		Duration:  req.Duration,
+		StartedAt: time.Now(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := s.db.Create(session).Error; err != nil {
+		return nil, fmt.Errorf("开始休息失败: %w", err)
+	}
+
+	return session, nil
+}
+
+// CompleteRest 完成休息
+func (s *RestService) CompleteRest(userID uint64, req *models.CompleteRestRequest) error {
+	var session models.RestSession
+	if err := s.db.Where("id = ? AND user_id = ?", req.SessionID, userID).First(&session).Error; err != nil {
+		return fmt.Errorf("休息会话不存在: %w", err)
+	}
+
+	now := time.Now()
+	updates := map[string]interface{}{
+		"completed_at": &now,
+		"updated_at":   now,
+	}
+
+	if req.Notes != "" {
+		updates["notes"] = req.Notes
+	}
+
+	if err := s.db.Model(&session).Updates(updates).Error; err != nil {
+		return fmt.Errorf("完成休息失败: %w", err)
+	}
+
+	return nil
+}
+
+// GetRestFeed 获取组间动态流
+func (s *RestService) GetRestFeed(userID uint64, page, limit int) (map[string]interface{}, error) {
+	var posts []models.RestPost
+	var total int64
+
+	offset := (page - 1) * limit
+
+	// 获取总数
+	if err := s.db.Model(&models.RestPost{}).Count(&total).Error; err != nil {
+		return nil, fmt.Errorf("获取动态总数失败: %w", err)
+	}
+
+	// 分页查询
+	if err := s.db.Preload("User").Offset(offset).Limit(limit).Order("created_at DESC").Find(&posts).Error; err != nil {
+		return nil, fmt.Errorf("获取动态列表失败: %w", err)
+	}
+
+	return map[string]interface{}{
+		"posts":      posts,
+		"total":      total,
+		"page":       page,
+		"limit":      limit,
+		"total_page": (int(total) + limit - 1) / limit,
+	}, nil
+}
+
+// CreateRestPost 创建组间动态
+func (s *RestService) CreateRestPost(userID uint, req *models.CreateRestPostRequest) (*models.RestPost, error) {
+	post := &models.RestPost{
+		UserID:    userID,
+		Content:   req.Content,
+		ImageURL:  req.ImageURL,
+		Type:      req.Type,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := s.db.Create(post).Error; err != nil {
+		return nil, fmt.Errorf("创建动态失败: %w", err)
+	}
+
+	return post, nil
+}
+
+// LikeRestPost 点赞组间动态
+func (s *RestService) LikeRestPost(userID uint, postID uint) error {
+	// 检查是否已经点赞
+	var existingLike models.RestLike
+	if err := s.db.Where("user_id = ? AND post_id = ?", userID, postID).First(&existingLike).Error; err == nil {
+		return fmt.Errorf("已经点赞过该动态")
+	}
+
+	like := &models.RestLike{
+		UserID:    userID,
+		PostID:    postID,
+		CreatedAt: time.Now(),
+	}
+
+	if err := s.db.Create(like).Error; err != nil {
+		return fmt.Errorf("点赞失败: %w", err)
+	}
+
+	return nil
+}
+
+// CommentRestPost 评论组间动态
+func (s *RestService) CommentRestPost(userID uint, postID uint, content string) error {
+	comment := &models.RestComment{
+		UserID:    userID,
+		PostID:    postID,
+		Content:   content,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := s.db.Create(comment).Error; err != nil {
+		return fmt.Errorf("评论失败: %w", err)
+	}
+
+	return nil
+}

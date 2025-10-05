@@ -2,10 +2,9 @@ package services
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
-	"fittracker/internal/models"
+	"gymates/internal/models"
 
 	"gorm.io/gorm"
 )
@@ -27,7 +26,7 @@ func NewTrainingService(db *gorm.DB, aiService *AIService, userService *UserServ
 }
 
 // GetTodayPlan 获取今日训练计划
-func (s *TrainingService) GetTodayPlan(userID string) (*models.TrainingPlan, error) {
+func (s *TrainingService) GetTodayPlan(userID uint) (*models.TrainingPlan, error) {
 	today := time.Now().Format("2006-01-02")
 
 	var plan models.TrainingPlan
@@ -39,7 +38,7 @@ func (s *TrainingService) GetTodayPlan(userID string) (*models.TrainingPlan, err
 		// 如果没有今日计划，返回默认计划
 		plan = models.TrainingPlan{
 			ID:          "1",
-			UserID:      userID,
+			UserID:      fmt.Sprintf("%d", userID),
 			Name:        "今日训练计划",
 			Description: "适合初学者的基础训练计划",
 			Duration:    30,
@@ -111,7 +110,7 @@ func (s *TrainingService) CreatePlan(plan *models.TrainingPlan) (*models.Trainin
 	}
 
 	// 预加载关联数据
-	if err := s.db.Preload("Exercises").First(plan, plan.ID).Error; err != nil {
+	if err := s.db.Preload("Exercises").First(plan, "id = ?", plan.ID).Error; err != nil {
 		return nil, err
 	}
 
@@ -130,48 +129,18 @@ func (s *TrainingService) DeletePlan(planID string) error {
 }
 
 // GenerateAIPlan 生成AI训练计划
-func (s *TrainingService) GenerateAIPlan(userID string, req *models.GenerateTrainingPlanRequest) (*models.TrainingPlan, error) {
-	// 转换为AI服务需要的格式
-	aiReq := WorkoutPlanRequest{
-		Goal:       req.Goal,
-		Duration:   req.Duration,
-		Difficulty: req.Difficulty,
-		Equipment:  strings.Join(req.Equipment, ","),
-	}
-	
+func (s *TrainingService) GenerateAIPlan(userID uint, req *models.GenerateTrainingPlanRequest) (*models.TrainingPlan, error) {
 	// 调用AI服务生成训练计划
-	aiResponse, err := s.aiService.GenerateTrainingPlan(aiReq)
+	aiPlan, err := s.aiService.GenerateTrainingPlan(req)
 	if err != nil {
 		return nil, fmt.Errorf("AI生成训练计划失败: %v", err)
 	}
 
-	// 转换为训练计划
-	plan := &models.TrainingPlan{
-		ID:            fmt.Sprintf("%d", time.Now().Unix()),
-		UserID:        userID,
-		Name:          aiResponse.Name,
-		Description:   aiResponse.Description,
-		Duration:      aiResponse.Duration,
-		Date:          time.Now(),
-		IsAIGenerated: true,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
-	}
-
-	// 转换动作
-	for _, exercise := range aiResponse.Exercises {
-		plan.Exercises = append(plan.Exercises, models.TrainingExercise{
-			Name:         exercise.Name,
-			Description:  exercise.Description,
-			Category:     exercise.Category,
-			Difficulty:   exercise.Difficulty,
-			MuscleGroups: exercise.MuscleGroups,
-			Equipment:    exercise.Equipment,
-		})
-	}
+	// 设置用户ID
+	aiPlan.UserID = fmt.Sprintf("%d", userID)
 
 	// 保存到数据库
-	return s.CreatePlan(plan)
+	return s.CreatePlan(aiPlan)
 }
 
 // CompleteExercise 完成动作

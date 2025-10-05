@@ -53,7 +53,7 @@ class Token(BaseModel):
     """访问令牌"""
     access_token: str
     token_type: str = "bearer"
-    expires_in: int
+    user: UserResponse
 
 class TokenData(BaseModel):
     """令牌数据"""

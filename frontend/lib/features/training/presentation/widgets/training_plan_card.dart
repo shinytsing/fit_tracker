@@ -3,7 +3,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 import '../../../../core/theme/app_theme.dart';
 import '../../domain/models/training_models.dart';
-import '../providers/training_provider.dart';
+import '../providers/training_provider.dart' as provider;
 
 class TrainingPlanCard extends StatelessWidget {
   final TrainingPlan plan;
@@ -184,8 +184,8 @@ class TrainingPlanCard extends StatelessWidget {
                   onPressed: () {
                     // TODO: 导航到训练详情页面
                   },
-                  icon: const Icon(MdiIcons.eye),
-                  label: const Text('查看详情'),
+                  icon: Icon(MdiIcons.eye),
+                  label: Text('查看详情'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -194,8 +194,8 @@ class TrainingPlanCard extends StatelessWidget {
                   onPressed: () {
                     // TODO: 开始训练
                   },
-                  icon: const Icon(MdiIcons.play),
-                  label: const Text('开始训练'),
+                  icon: Icon(MdiIcons.play),
+                  label: Text('开始训练'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
@@ -234,6 +234,11 @@ class TrainingPlanCard extends StatelessWidget {
         color = Colors.grey;
         text = '已跳过';
         icon = MdiIcons.skipNext;
+        break;
+      case TrainingStatus.planned:
+        color = Colors.purple;
+        text = '已计划';
+        icon = MdiIcons.calendar;
         break;
     }
     

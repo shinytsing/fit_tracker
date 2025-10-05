@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"fittracker/internal/domain/models"
+	"gymates/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

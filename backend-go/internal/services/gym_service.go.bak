@@ -1,0 +1,286 @@
+package services
+
+import (
+	"fmt"
+	"time"
+
+	"gymates/internal/models"
+
+	"gorm.io/gorm"
+)
+
+type GymService struct {
+	db *gorm.DB
+}
+
+func NewGymService(db *gorm.DB) *GymService {
+	return &GymService{
+		db: db,
+	}
+}
+
+// CreateGym 创建健身房
+func (s *GymService) CreateGym(req *models.CreateGymRequest, userID uint) (*models.Gym, error) {
+	userIDStr := fmt.Sprintf("%d", userID)
+	gym := &models.Gym{
+		Name:         req.Name,
+		Address:      req.Address,
+		Latitude:     req.Latitude,
+		Longitude:    req.Longitude,
+		Phone:        req.Phone,
+		Description:  req.Description,
+		Facilities:   req.Facilities,
+		OpeningHours: req.OpeningHours,
+		OwnerUserID:  &userIDStr,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+
+	if err := s.db.Create(gym).Error; err != nil {
+		return nil, fmt.Errorf("创建健身房失败: %w", err)
+	}
+
+	return gym, nil
+}
+
+// GetGyms 获取健身房列表
+func (s *GymService) GetGyms(lat, lng, radius float64, page, pageSize int, search string) (map[string]interface{}, error) {
+	var gyms []models.Gym
+	var total int64
+
+	query := s.db.Model(&models.Gym{})
+
+	if search != "" {
+		query = query.Where("name ILIKE ? OR address ILIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	// 获取总数
+	if err := query.Count(&total).Error; err != nil {
+		return nil, fmt.Errorf("获取健身房总数失败: %w", err)
+	}
+
+	// 分页查询
+	offset := (page - 1) * pageSize
+	if err := query.Offset(offset).Limit(pageSize).Find(&gyms).Error; err != nil {
+		return nil, fmt.Errorf("获取健身房列表失败: %w", err)
+	}
+
+	return map[string]interface{}{
+		"gyms":      gyms,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+	}, nil
+}
+
+// GetGymByID 根据ID获取健身房详情
+func (s *GymService) GetGymByID(gymID uint, userID *uint) (*models.Gym, error) {
+	var gym models.Gym
+	if err := s.db.First(&gym, gymID).Error; err != nil {
+		return nil, fmt.Errorf("健身房不存在: %w", err)
+	}
+
+	return &gym, nil
+}
+
+// JoinGym 申请加入健身房
+func (s *GymService) JoinGym(gymID, userID uint, req *models.GymJoinRequestRequest) (*models.GymJoinRequest, error) {
+	// 检查是否已经申请过
+	var existingRequest models.GymJoinRequest
+	if err := s.db.Where("gym_id = ? AND user_id = ?", gymID, userID).First(&existingRequest).Error; err == nil {
+		return nil, fmt.Errorf("已经申请过加入该健身房")
+	}
+
+	joinRequest := &models.GymJoinRequest{
+		GymID:     gymID,
+		UserID:    userID,
+		Goal:      req.Goal,
+		Message:   req.Message,
+		Status:    "pending",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := s.db.Create(joinRequest).Error; err != nil {
+		return nil, fmt.Errorf("申请加入健身房失败: %w", err)
+	}
+
+	return joinRequest, nil
+}
+
+// AcceptJoinRequest 接受加入申请
+func (s *GymService) AcceptJoinRequest(gymID, userID uint, req *models.AcceptJoinRequestRequest) error {
+	var joinRequest models.GymJoinRequest
+	if err := s.db.Where("id = ? AND gym_id = ?", req.RequestID, gymID).First(&joinRequest).Error; err != nil {
+		return fmt.Errorf("申请不存在: %w", err)
+	}
+
+	if err := s.db.Model(&joinRequest).Updates(map[string]interface{}{
+		"status":     "accepted",
+		"updated_at": time.Now(),
+	}).Error; err != nil {
+		return fmt.Errorf("接受申请失败: %w", err)
+	}
+
+	return nil
+}
+
+// RejectJoinRequest 拒绝加入申请
+func (s *GymService) RejectJoinRequest(gymID, userID, requestID uint) error {
+	var joinRequest models.GymJoinRequest
+	if err := s.db.Where("id = ? AND gym_id = ?", requestID, gymID).First(&joinRequest).Error; err != nil {
+		return fmt.Errorf("申请不存在: %w", err)
+	}
+
+	if err := s.db.Model(&joinRequest).Updates(map[string]interface{}{
+		"status":     "rejected",
+		"updated_at": time.Now(),
+	}).Error; err != nil {
+		return fmt.Errorf("拒绝申请失败: %w", err)
+	}
+
+	return nil
+}
+
+// CancelJoinRequest 取消加入申请
+func (s *GymService) CancelJoinRequest(gymID, userID uint) error {
+	if err := s.db.Where("gym_id = ? AND user_id = ? AND status = 'pending'", gymID, userID).Delete(&models.GymJoinRequest{}).Error; err != nil {
+		return fmt.Errorf("取消申请失败: %w", err)
+	}
+
+	return nil
+}
+
+// GetGymBuddies 获取健身房搭子列表
+func (s *GymService) GetGymBuddies(gymID uint) ([]models.User, error) {
+	var buddies []models.User
+	if err := s.db.Table("users").
+		Joins("JOIN gym_join_requests ON users.uid = gym_join_requests.user_id").
+		Where("gym_join_requests.gym_id = ? AND gym_join_requests.status = 'accepted'", gymID).
+		Find(&buddies).Error; err != nil {
+		return nil, fmt.Errorf("获取搭子列表失败: %w", err)
+	}
+
+	return buddies, nil
+}
+
+// CreateGymDiscount 创建折扣策略
+func (s *GymService) CreateGymDiscount(gymID, userID uint, req *models.CreateGymDiscountRequest) (*models.GymDiscount, error) {
+	discount := &models.GymDiscount{
+		GymID:           gymID,
+		MinGroupSize:    req.MinGroupSize,
+		MaxGroupSize:    req.MaxGroupSize,
+		DiscountPercent: req.DiscountPercent,
+		DiscountType:    req.DiscountType,
+		DiscountAmount:  req.DiscountAmount,
+		Description:     req.Description,
+		IsActive:        true,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+
+	if err := s.db.Create(discount).Error; err != nil {
+		return nil, fmt.Errorf("创建折扣策略失败: %w", err)
+	}
+
+	return discount, nil
+}
+
+// CreateGymReview 创建健身房评价
+func (s *GymService) CreateGymReview(gymID, userID uint, req *models.CreateGymReviewRequest) (*models.GymReview, error) {
+	review := &models.GymReview{
+		GymID:     gymID,
+		UserID:    userID,
+		Rating:    req.Rating,
+		Comment:   req.Comment,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	if err := s.db.Create(review).Error; err != nil {
+		return nil, fmt.Errorf("创建评价失败: %w", err)
+	}
+
+	return review, nil
+}
+
+// UpdateGym 更新健身房信息
+func (s *GymService) UpdateGym(gymID, userID uint, req *models.UpdateGymRequest) (*models.Gym, error) {
+	var gym models.Gym
+	if err := s.db.First(&gym, gymID).Error; err != nil {
+		return nil, fmt.Errorf("健身房不存在: %w", err)
+	}
+
+	// 检查权限
+	userIDStr := fmt.Sprintf("%d", userID)
+	if gym.OwnerUserID == nil || *gym.OwnerUserID != userIDStr {
+		return nil, fmt.Errorf("无权限修改该健身房")
+	}
+
+	updates := map[string]interface{}{
+		"updated_at": time.Now(),
+	}
+
+	if req.Name != "" {
+		updates["name"] = req.Name
+	}
+	if req.Address != "" {
+		updates["address"] = req.Address
+	}
+	if req.Phone != "" {
+		updates["phone"] = req.Phone
+	}
+	if req.Description != "" {
+		updates["description"] = req.Description
+	}
+	if req.OpeningHours != "" {
+		updates["opening_hours"] = req.OpeningHours
+	}
+
+	if err := s.db.Model(&gym).Updates(updates).Error; err != nil {
+		return nil, fmt.Errorf("更新健身房失败: %w", err)
+	}
+
+	return &gym, nil
+}
+
+// DeleteGym 删除健身房
+func (s *GymService) DeleteGym(gymID, userID uint) error {
+	var gym models.Gym
+	if err := s.db.First(&gym, gymID).Error; err != nil {
+		return fmt.Errorf("健身房不存在: %w", err)
+	}
+
+	// 检查权限
+	userIDStr := fmt.Sprintf("%d", userID)
+	if gym.OwnerUserID == nil || *gym.OwnerUserID != userIDStr {
+		return fmt.Errorf("无权限删除该健身房")
+	}
+
+	if err := s.db.Delete(&gym).Error; err != nil {
+		return fmt.Errorf("删除健身房失败: %w", err)
+	}
+
+	return nil
+}
+
+// GetNearbyGyms 获取附近的健身房
+func (s *GymService) GetNearbyGyms(lat, lng, radius float64, limit int) ([]models.Gym, error) {
+	var gyms []models.Gym
+
+	// 使用简单的距离计算（实际项目中应该使用更精确的地理位置查询）
+	query := s.db.Model(&models.Gym{})
+
+	if lat != 0 && lng != 0 && radius > 0 {
+		// 这里应该使用 PostGIS 或其他地理位置扩展进行精确查询
+		// 为了简化，这里只做基本查询
+		query = query.Where("lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?",
+			lat-radius/111, lat+radius/111, lng-radius/111, lng+radius/111)
+	}
+
+	if err := query.Limit(limit).Find(&gyms).Error; err != nil {
+		return nil, fmt.Errorf("获取附近健身房失败: %w", err)
+	}
+
+	return gyms, nil
+}

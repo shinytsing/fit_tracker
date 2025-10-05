@@ -54,7 +54,7 @@ func Load() *Config {
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnv("DB_PORT", "5432"),
 			User:     getEnv("DB_USER", "fittracker"),
-			Password: getEnv("DB_PASSWORD", "fittracker123"),
+			Password: getEnv("DB_PASSWORD", ""),
 			DBName:   getEnv("DB_NAME", "fittracker"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		},
@@ -65,7 +65,7 @@ func Load() *Config {
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
 		JWT: JWTConfig{
-			SecretKey: getEnv("JWT_SECRET", "fittracker-secret-key-2024"),
+			SecretKey: getEnv("JWT_SECRET", "gymates-secret-key-2024"),
 			ExpiresIn: getEnvAsInt("JWT_EXPIRES_IN", 24),
 		},
 		AI: AIConfig{

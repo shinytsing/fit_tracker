@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"fittracker/internal/models"
-	"fittracker/internal/services"
+	"gymates/internal/models"
+	"gymates/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -47,14 +47,13 @@ func (h *WorkoutHandler) CreateWorkoutPlan(c *gin.Context) {
 		return
 	}
 
-	plan := &models.WorkoutPlan{
-		UserID:      userID.(uint),
-		Title:       req.Title,
-		Description: req.Description,
-		PlanType:    req.PlanType,
-		Difficulty:  req.Difficulty,
-		Duration:    req.Duration,
-		IsPublic:    req.IsPublic,
+	plan := &models.TrainingPlan{
+		UserID:        userID.(uint),
+		Name:          req.Title,
+		Description:   req.Description,
+		Duration:      req.Duration,
+		IsAIGenerated: req.PlanType == "AI生成",
+		Date:          time.Now(),
 	}
 
 	if err := h.workoutService.CreateWorkoutPlan(plan); err != nil {
@@ -70,11 +69,6 @@ func (h *WorkoutHandler) CreateWorkoutPlan(c *gin.Context) {
 
 // GenerateAIWorkoutPlan 生成AI训练计划
 func (h *WorkoutHandler) GenerateAIWorkoutPlan(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
 
 	var req struct {
 		Goal        string `json:"goal" binding:"required"`
@@ -92,7 +86,15 @@ func (h *WorkoutHandler) GenerateAIWorkoutPlan(c *gin.Context) {
 	}
 
 	// 调用AI服务生成训练计划
-	plan, err := h.aiService.GenerateWorkoutPlan(userID.(uint), req)
+	plan, err := h.aiService.GenerateTrainingPlan(services.WorkoutPlanRequest{
+		Goal:        req.Goal,
+		Duration:    req.Duration,
+		Difficulty:  req.Difficulty,
+		Experience:  req.Experience,
+		Equipment:   req.Equipment,
+		TimePerDay:  req.TimePerDay,
+		Preferences: req.Preferences,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate workout plan"})
 		return
@@ -163,7 +165,7 @@ func (h *WorkoutHandler) CreateWorkoutSession(c *gin.Context) {
 		Duration  int               `json:"duration"`
 		Calories  int               `json:"calories"`
 		Notes     string            `json:"notes"`
-		Exercises []ExerciseRequest `json:"exercises"`
+		Exercises []services.ExerciseRequest `json:"exercises"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -171,14 +173,14 @@ func (h *WorkoutHandler) CreateWorkoutSession(c *gin.Context) {
 		return
 	}
 
-	session := &models.WorkoutSession{
-		UserID:   userID.(uint),
-		PlanID:   req.PlanID,
-		Title:    req.Title,
-		Date:     req.Date,
-		Duration: req.Duration,
-		Calories: req.Calories,
-		Notes:    req.Notes,
+	session := &models.Workout{
+		UserID:     userID.(uint),
+		Name:       req.Title,
+		Type:       "custom",
+		Duration:   int64(req.Duration),
+		Calories:   int64(req.Calories),
+		Difficulty: "medium",
+		Notes:      req.Notes,
 	}
 
 	if err := h.workoutService.CreateWorkoutSession(session, req.Exercises); err != nil {
@@ -190,18 +192,6 @@ func (h *WorkoutHandler) CreateWorkoutSession(c *gin.Context) {
 		"message": "Workout session created successfully",
 		"session": session,
 	})
-}
-
-type ExerciseRequest struct {
-	Name     string  `json:"name" binding:"required"`
-	Category string  `json:"category"`
-	Sets     int     `json:"sets"`
-	Reps     int     `json:"reps"`
-	Weight   float64 `json:"weight"`
-	Duration int     `json:"duration"`
-	Distance float64 `json:"distance"`
-	RestTime int     `json:"rest_time"`
-	Notes    string  `json:"notes"`
 }
 
 // GetWorkoutSessions 获取训练会话列表
@@ -261,15 +251,14 @@ func (h *WorkoutHandler) CreateCheckIn(c *gin.Context) {
 		return
 	}
 
-	checkIn := &models.CheckIn{
-		UserID:      userID.(uint),
-		Date:        req.Date,
-		WorkoutType: req.WorkoutType,
-		Duration:    req.Duration,
-		Calories:    req.Calories,
-		Mood:        req.Mood,
-		Notes:       req.Notes,
-		Images:      req.Images,
+	checkIn := &models.Checkin{
+		UserID:     userID.(uint),
+		Date:       req.Date,
+		Type:       req.WorkoutType,
+		Mood:       req.Mood,
+		Notes:      req.Notes,
+		Energy:     int64(req.Duration / 10), // 将时长转换为精力等级
+		Motivation: int64(req.Calories / 100), // 将卡路里转换为动力等级
 	}
 
 	if err := h.workoutService.CreateCheckIn(checkIn); err != nil {

@@ -23,6 +23,8 @@ mixin _$MessageState {
       throw _privateConstructorUsedError;
   List<NotificationItem> get systemMessages =>
       throw _privateConstructorUsedError;
+  List<Message> get chatMessages => throw _privateConstructorUsedError;
+  List<String> get typingUsers => throw _privateConstructorUsedError;
   bool get isConnected => throw _privateConstructorUsedError;
   int get unreadMessagesCount => throw _privateConstructorUsedError;
   int get unreadNotificationsCount => throw _privateConstructorUsedError;
@@ -47,6 +49,8 @@ abstract class $MessageStateCopyWith<$Res> {
       List<Group> groups,
       List<NotificationItem> notifications,
       List<NotificationItem> systemMessages,
+      List<Message> chatMessages,
+      List<String> typingUsers,
       bool isConnected,
       int unreadMessagesCount,
       int unreadNotificationsCount,
@@ -73,6 +77,8 @@ class _$MessageStateCopyWithImpl<$Res, $Val extends MessageState>
     Object? groups = null,
     Object? notifications = null,
     Object? systemMessages = null,
+    Object? chatMessages = null,
+    Object? typingUsers = null,
     Object? isConnected = null,
     Object? unreadMessagesCount = null,
     Object? unreadNotificationsCount = null,
@@ -101,6 +107,14 @@ class _$MessageStateCopyWithImpl<$Res, $Val extends MessageState>
           ? _value.systemMessages
           : systemMessages // ignore: cast_nullable_to_non_nullable
               as List<NotificationItem>,
+      chatMessages: null == chatMessages
+          ? _value.chatMessages
+          : chatMessages // ignore: cast_nullable_to_non_nullable
+              as List<Message>,
+      typingUsers: null == typingUsers
+          ? _value.typingUsers
+          : typingUsers // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       isConnected: null == isConnected
           ? _value.isConnected
           : isConnected // ignore: cast_nullable_to_non_nullable
@@ -143,6 +157,8 @@ abstract class _$$MessageStateImplCopyWith<$Res>
       List<Group> groups,
       List<NotificationItem> notifications,
       List<NotificationItem> systemMessages,
+      List<Message> chatMessages,
+      List<String> typingUsers,
       bool isConnected,
       int unreadMessagesCount,
       int unreadNotificationsCount,
@@ -167,6 +183,8 @@ class __$$MessageStateImplCopyWithImpl<$Res>
     Object? groups = null,
     Object? notifications = null,
     Object? systemMessages = null,
+    Object? chatMessages = null,
+    Object? typingUsers = null,
     Object? isConnected = null,
     Object? unreadMessagesCount = null,
     Object? unreadNotificationsCount = null,
@@ -195,6 +213,14 @@ class __$$MessageStateImplCopyWithImpl<$Res>
           ? _value._systemMessages
           : systemMessages // ignore: cast_nullable_to_non_nullable
               as List<NotificationItem>,
+      chatMessages: null == chatMessages
+          ? _value._chatMessages
+          : chatMessages // ignore: cast_nullable_to_non_nullable
+              as List<Message>,
+      typingUsers: null == typingUsers
+          ? _value._typingUsers
+          : typingUsers // ignore: cast_nullable_to_non_nullable
+              as List<String>,
       isConnected: null == isConnected
           ? _value.isConnected
           : isConnected // ignore: cast_nullable_to_non_nullable
@@ -232,6 +258,8 @@ class _$MessageStateImpl implements _MessageState {
       final List<Group> groups = const [],
       final List<NotificationItem> notifications = const [],
       final List<NotificationItem> systemMessages = const [],
+      final List<Message> chatMessages = const [],
+      final List<String> typingUsers = const [],
       this.isConnected = false,
       this.unreadMessagesCount = 0,
       this.unreadNotificationsCount = 0,
@@ -241,7 +269,9 @@ class _$MessageStateImpl implements _MessageState {
       : _chats = chats,
         _groups = groups,
         _notifications = notifications,
-        _systemMessages = systemMessages;
+        _systemMessages = systemMessages,
+        _chatMessages = chatMessages,
+        _typingUsers = typingUsers;
 
   @override
   @JsonKey()
@@ -282,6 +312,24 @@ class _$MessageStateImpl implements _MessageState {
     return EqualUnmodifiableListView(_systemMessages);
   }
 
+  final List<Message> _chatMessages;
+  @override
+  @JsonKey()
+  List<Message> get chatMessages {
+    if (_chatMessages is EqualUnmodifiableListView) return _chatMessages;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_chatMessages);
+  }
+
+  final List<String> _typingUsers;
+  @override
+  @JsonKey()
+  List<String> get typingUsers {
+    if (_typingUsers is EqualUnmodifiableListView) return _typingUsers;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_typingUsers);
+  }
+
   @override
   @JsonKey()
   final bool isConnected;
@@ -302,7 +350,7 @@ class _$MessageStateImpl implements _MessageState {
 
   @override
   String toString() {
-    return 'MessageState(isLoading: $isLoading, chats: $chats, groups: $groups, notifications: $notifications, systemMessages: $systemMessages, isConnected: $isConnected, unreadMessagesCount: $unreadMessagesCount, unreadNotificationsCount: $unreadNotificationsCount, groupsCount: $groupsCount, videoCallsCount: $videoCallsCount, error: $error)';
+    return 'MessageState(isLoading: $isLoading, chats: $chats, groups: $groups, notifications: $notifications, systemMessages: $systemMessages, chatMessages: $chatMessages, typingUsers: $typingUsers, isConnected: $isConnected, unreadMessagesCount: $unreadMessagesCount, unreadNotificationsCount: $unreadNotificationsCount, groupsCount: $groupsCount, videoCallsCount: $videoCallsCount, error: $error)';
   }
 
   @override
@@ -318,6 +366,10 @@ class _$MessageStateImpl implements _MessageState {
                 .equals(other._notifications, _notifications) &&
             const DeepCollectionEquality()
                 .equals(other._systemMessages, _systemMessages) &&
+            const DeepCollectionEquality()
+                .equals(other._chatMessages, _chatMessages) &&
+            const DeepCollectionEquality()
+                .equals(other._typingUsers, _typingUsers) &&
             (identical(other.isConnected, isConnected) ||
                 other.isConnected == isConnected) &&
             (identical(other.unreadMessagesCount, unreadMessagesCount) ||
@@ -340,6 +392,8 @@ class _$MessageStateImpl implements _MessageState {
       const DeepCollectionEquality().hash(_groups),
       const DeepCollectionEquality().hash(_notifications),
       const DeepCollectionEquality().hash(_systemMessages),
+      const DeepCollectionEquality().hash(_chatMessages),
+      const DeepCollectionEquality().hash(_typingUsers),
       isConnected,
       unreadMessagesCount,
       unreadNotificationsCount,
@@ -361,6 +415,8 @@ abstract class _MessageState implements MessageState {
       final List<Group> groups,
       final List<NotificationItem> notifications,
       final List<NotificationItem> systemMessages,
+      final List<Message> chatMessages,
+      final List<String> typingUsers,
       final bool isConnected,
       final int unreadMessagesCount,
       final int unreadNotificationsCount,
@@ -378,6 +434,10 @@ abstract class _MessageState implements MessageState {
   List<NotificationItem> get notifications;
   @override
   List<NotificationItem> get systemMessages;
+  @override
+  List<Message> get chatMessages;
+  @override
+  List<String> get typingUsers;
   @override
   bool get isConnected;
   @override

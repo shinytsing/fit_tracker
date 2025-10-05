@@ -7,7 +7,7 @@ import '../../../training/presentation/pages/training_page.dart';
 import '../../../community/presentation/pages/community_page.dart';
 import '../../../message/presentation/pages/message_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
-import '../../../post/presentation/pages/create_post_page.dart';
+import '../../../publish/presentation/pages/publish_menu_page.dart';
 
 class MainTabPage extends ConsumerStatefulWidget {
   const MainTabPage({super.key});
@@ -19,12 +19,12 @@ class MainTabPage extends ConsumerStatefulWidget {
 class _MainTabPageState extends ConsumerState<MainTabPage> {
   int _currentIndex = 0;
 
+  // 新的4个Tab页面结构 - 按照功能重排表
   final List<Widget> _pages = [
-    const TrainingPage(),
-    const CommunityPage(),
-    const SizedBox.shrink(), // 加号按钮占位
-    const MessagePage(),
-    const ProfilePage(),
+    const TrainingPage(),    // Tab1: 训练
+    const CommunityPage(),   // Tab2: 社区
+    const MessagePage(),     // Tab3: 消息
+    const ProfilePage(),     // Tab4: 我的
   ];
 
   @override
@@ -34,6 +34,8 @@ class _MainTabPageState extends ConsumerState<MainTabPage> {
         index: _currentIndex,
         children: _pages,
       ),
+      floatingActionButton: _buildFloatingActionButton(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
@@ -62,22 +64,46 @@ class _MainTabPageState extends ConsumerState<MainTabPage> {
                   label: '社区',
                   index: 1,
                 ),
-                _buildAddButton(),
+                // 中间留空给FloatingActionButton
+                const SizedBox(width: 60), // 为FAB预留空间
                 _buildTabItem(
                   icon: MdiIcons.messageOutline,
                   label: '消息',
-                  index: 3,
+                  index: 2,
                 ),
                 _buildTabItem(
                   icon: MdiIcons.accountOutline,
-                  label: '我',
-                  index: 4,
+                  label: '我的',
+                  index: 3,
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // 构建中间加号按钮
+  Widget _buildFloatingActionButton() {
+    return FloatingActionButton(
+      onPressed: () => _showPublishMenu(context),
+      backgroundColor: AppTheme.primaryColor,
+      elevation: 8,
+      child: Icon(
+        Icons.add,
+        color: Colors.white,
+        size: 28,
+      ),
+    );
+  }
+
+  // 显示发布菜单
+  void _showPublishMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const PublishMenuPage(),
     );
   }
 
@@ -119,52 +145,10 @@ class _MainTabPageState extends ConsumerState<MainTabPage> {
     );
   }
 
-  Widget _buildAddButton() {
-    return GestureDetector(
-      onTap: _onAddButtonTapped,
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppTheme.primaryColor,
-              AppTheme.primaryColor.withOpacity(0.8),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryColor.withOpacity(0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(
-          MdiIcons.plus,
-          color: Colors.white,
-          size: 28,
-        ),
-      ),
-    );
-  }
 
   void _onTabTapped(int index) {
-    if (index == 2) return; // 加号按钮不切换tab
-    
     setState(() {
       _currentIndex = index;
     });
-  }
-
-  void _onAddButtonTapped() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const CreatePostPage(),
-      ),
-    );
   }
 }

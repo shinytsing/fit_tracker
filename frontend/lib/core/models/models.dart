@@ -805,6 +805,13 @@ class Challenge {
   final DateTime endDate;
   final bool isActive;
   final int participantsCount;
+  final String? coverImage;
+  final String? rules;
+  final String? rewards;
+  final String? tags;
+  final bool isFeatured;
+  final int? maxParticipants;
+  final double? entryFee;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -818,6 +825,13 @@ class Challenge {
     required this.endDate,
     required this.isActive,
     required this.participantsCount,
+    this.coverImage,
+    this.rules,
+    this.rewards,
+    this.tags,
+    this.isFeatured = false,
+    this.maxParticipants,
+    this.entryFee,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -833,6 +847,13 @@ class Challenge {
       endDate: DateTime.parse(json['end_date']),
       isActive: json['is_active'] ?? false,
       participantsCount: json['participants_count'] ?? 0,
+      coverImage: json['cover_image'],
+      rules: json['rules'],
+      rewards: json['rewards'],
+      tags: json['tags'],
+      isFeatured: json['is_featured'] ?? false,
+      maxParticipants: json['max_participants'],
+      entryFee: json['entry_fee']?.toDouble(),
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
     );
@@ -849,6 +870,13 @@ class Challenge {
       'end_date': endDate.toIso8601String(),
       'is_active': isActive,
       'participants_count': participantsCount,
+      'cover_image': coverImage,
+      'rules': rules,
+      'rewards': rewards,
+      'tags': tags,
+      'is_featured': isFeatured,
+      'max_participants': maxParticipants,
+      'entry_fee': entryFee,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -2127,7 +2155,7 @@ class NotificationItem {
   final String id;
   final String title;
   final String? content;
-  final String type;
+  final NotificationType type;
   final Map<String, dynamic>? data;
   final bool isRead;
   final DateTime createdAt;
@@ -2147,7 +2175,10 @@ class NotificationItem {
       id: json['id'],
       title: json['title'],
       content: json['content'],
-      type: json['type'],
+      type: NotificationType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => NotificationType.system,
+      ),
       data: json['data'],
       isRead: json['is_read'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
@@ -2159,7 +2190,7 @@ class NotificationItem {
       'id': id,
       'title': title,
       'content': content,
-      'type': type,
+      'type': type.name,
       'data': data,
       'is_read': isRead,
       'created_at': createdAt.toIso8601String(),
@@ -2170,7 +2201,7 @@ class NotificationItem {
     String? id,
     String? title,
     String? content,
-    String? type,
+    NotificationType? type,
     Map<String, dynamic>? data,
     bool? isRead,
     DateTime? createdAt,
@@ -2192,9 +2223,10 @@ class Message {
   final String chatId;
   final String senderId;
   final String content;
-  final String type;
+  final MessageType type;
   final DateTime timestamp;
   final DateTime createdAt;
+  final DateTime updatedAt;
   final bool isRead;
   final bool isDelivered;
   final bool isEdited;
@@ -2224,6 +2256,7 @@ class Message {
     required this.type,
     required this.timestamp,
     required this.createdAt,
+    required this.updatedAt,
     this.isRead = false,
     this.isDelivered = false,
     this.isEdited = false,
@@ -2250,9 +2283,13 @@ class Message {
       chatId: json['chat_id'],
       senderId: json['sender_id'],
       content: json['content'],
-      type: json['type'],
+      type: MessageType.values.firstWhere(
+        (e) => e.name == json['type'],
+        orElse: () => MessageType.text,
+      ),
       timestamp: DateTime.parse(json['timestamp']),
       createdAt: DateTime.parse(json['created_at'] ?? json['timestamp']),
+      updatedAt: DateTime.parse(json['updated_at'] ?? json['created_at'] ?? json['timestamp']),
       isRead: json['is_read'] ?? false,
       isDelivered: json['is_delivered'] ?? false,
       isEdited: json['is_edited'] ?? false,
@@ -2287,9 +2324,10 @@ class Message {
       'chat_id': chatId,
       'sender_id': senderId,
       'content': content,
-      'type': type,
+      'type': type.name,
       'timestamp': timestamp.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
       'is_read': isRead,
       'is_delivered': isDelivered,
       'is_edited': isEdited,
@@ -2309,6 +2347,64 @@ class Message {
       'contact_avatar': contactAvatar,
       'status': status?.name,
     };
+  }
+
+  Message copyWith({
+    String? id,
+    String? chatId,
+    String? senderId,
+    String? content,
+    MessageType? type,
+    DateTime? timestamp,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    bool? isRead,
+    bool? isDelivered,
+    bool? isEdited,
+    String? replyToMessageId,
+    List<String>? attachments,
+    String? senderName,
+    String? senderAvatar,
+    String? mediaUrl,
+    String? thumbnailUrl,
+    int? duration,
+    String? fileName,
+    int? fileSize,
+    String? locationName,
+    String? locationAddress,
+    String? contactName,
+    String? contactPhone,
+    String? contactAvatar,
+    MessageStatus? status,
+  }) {
+    return Message(
+      id: id ?? this.id,
+      chatId: chatId ?? this.chatId,
+      senderId: senderId ?? this.senderId,
+      content: content ?? this.content,
+      type: type ?? this.type,
+      timestamp: timestamp ?? this.timestamp,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isRead: isRead ?? this.isRead,
+      isDelivered: isDelivered ?? this.isDelivered,
+      isEdited: isEdited ?? this.isEdited,
+      replyToMessageId: replyToMessageId ?? this.replyToMessageId,
+      attachments: attachments ?? this.attachments,
+      senderName: senderName ?? this.senderName,
+      senderAvatar: senderAvatar ?? this.senderAvatar,
+      mediaUrl: mediaUrl ?? this.mediaUrl,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      duration: duration ?? this.duration,
+      fileName: fileName ?? this.fileName,
+      fileSize: fileSize ?? this.fileSize,
+      locationName: locationName ?? this.locationName,
+      locationAddress: locationAddress ?? this.locationAddress,
+      contactName: contactName ?? this.contactName,
+      contactPhone: contactPhone ?? this.contactPhone,
+      contactAvatar: contactAvatar ?? this.contactAvatar,
+      status: status ?? this.status,
+    );
   }
 }
 
@@ -2331,6 +2427,25 @@ enum MessageStatus {
   delivered,
   read,
   failed,
+}
+
+enum NotificationType {
+  like,
+  comment,
+  follow,
+  challenge,
+  workout,
+  achievement,
+  system,
+  message,
+}
+
+enum TrainingStatus {
+  pending,
+  planned,
+  inProgress,
+  completed,
+  skipped,
 }
 
 class ProfileStats {
@@ -2384,3 +2499,495 @@ class ProfileStats {
     };
   }
 }
+
+// ==================== 组间休息相关模型 ====================
+
+class RestSession {
+  final int id;
+  final int userId;
+  final int duration;
+  final DateTime startedAt;
+  final DateTime? completedAt;
+  final String notes;
+  final String aiHint;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  RestSession({
+    required this.id,
+    required this.userId,
+    required this.duration,
+    required this.startedAt,
+    this.completedAt,
+    required this.notes,
+    required this.aiHint,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory RestSession.fromJson(Map<String, dynamic> json) {
+    return RestSession(
+      id: json['id'],
+      userId: json['user_id'],
+      duration: json['duration'],
+      startedAt: DateTime.parse(json['started_at']),
+      completedAt: json['completed_at'] != null 
+          ? DateTime.parse(json['completed_at'])
+          : null,
+      notes: json['notes'] ?? '',
+      aiHint: json['ai_hint'] ?? '',
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: DateTime.parse(json['updated_at']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'duration': duration,
+      'started_at': startedAt.toIso8601String(),
+      'completed_at': completedAt?.toIso8601String(),
+      'notes': notes,
+      'ai_hint': aiHint,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+}
+
+class RestPost {
+  final int id;
+  final int userId;
+  final String content;
+  final String? imageUrl;
+  final String type;
+  final bool isActive;
+  final int likesCount;
+  final int commentsCount;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final User? user;
+  final bool isLiked;
+
+  RestPost({
+    required this.id,
+    required this.userId,
+    required this.content,
+    this.imageUrl,
+    required this.type,
+    required this.isActive,
+    required this.likesCount,
+    required this.commentsCount,
+    required this.createdAt,
+    required this.updatedAt,
+    this.user,
+    this.isLiked = false,
+  });
+
+  factory RestPost.fromJson(Map<String, dynamic> json) {
+    return RestPost(
+      id: json['id'],
+      userId: json['user_id'],
+      content: json['content'],
+      imageUrl: json['image_url'],
+      type: json['type'] ?? 'rest',
+      isActive: json['is_active'] ?? true,
+      likesCount: json['likes_count'] ?? 0,
+      commentsCount: json['comments_count'] ?? 0,
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: DateTime.parse(json['updated_at']),
+      user: json['user'] != null ? User.fromJson(json['user']) : null,
+      isLiked: json['is_liked'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'content': content,
+      'image_url': imageUrl,
+      'type': type,
+      'is_active': isActive,
+      'likes_count': likesCount,
+      'comments_count': commentsCount,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+      'user': user?.toJson(),
+      'is_liked': isLiked,
+    };
+  }
+
+  RestPost copyWith({
+    int? id,
+    int? userId,
+    String? content,
+    String? imageUrl,
+    String? type,
+    bool? isActive,
+    int? likesCount,
+    int? commentsCount,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    User? user,
+    bool? isLiked,
+  }) {
+    return RestPost(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      content: content ?? this.content,
+      imageUrl: imageUrl ?? this.imageUrl,
+      type: type ?? this.type,
+      isActive: isActive ?? this.isActive,
+      likesCount: likesCount ?? this.likesCount,
+      commentsCount: commentsCount ?? this.commentsCount,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      user: user ?? this.user,
+      isLiked: isLiked ?? this.isLiked,
+    );
+  }
+}
+
+class RestFeed {
+  final List<RestPost> posts;
+  final List<RestPost> jokes;
+  final List<RestPost> knowledge;
+  final int total;
+  final bool hasMore;
+
+  RestFeed({
+    required this.posts,
+    required this.jokes,
+    required this.knowledge,
+    required this.total,
+    required this.hasMore,
+  });
+
+  factory RestFeed.fromJson(Map<String, dynamic> json) {
+    return RestFeed(
+      posts: (json['posts'] as List?)
+          ?.map((post) => RestPost.fromJson(post))
+          .toList() ?? [],
+      jokes: (json['jokes'] as List?)
+          ?.map((joke) => RestPost.fromJson(joke))
+          .toList() ?? [],
+      knowledge: (json['knowledge'] as List?)
+          ?.map((knowledge) => RestPost.fromJson(knowledge))
+          .toList() ?? [],
+      total: json['total'] ?? 0,
+      hasMore: json['has_more'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'posts': posts.map((post) => post.toJson()).toList(),
+      'jokes': jokes.map((joke) => joke.toJson()).toList(),
+      'knowledge': knowledge.map((knowledge) => knowledge.toJson()).toList(),
+      'total': total,
+      'has_more': hasMore,
+    };
+  }
+}
+
+// 健身房相关模型
+class Gym {
+  final String id;
+  final String name;
+  final String? address;
+  final double? lat;
+  final double? lng;
+  final String? description;
+  final String? ownerUserId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final int? currentBuddiesCount;
+  final GymDiscount? applicableDiscount;
+
+  Gym({
+    required this.id,
+    required this.name,
+    this.address,
+    this.lat,
+    this.lng,
+    this.description,
+    this.ownerUserId,
+    required this.createdAt,
+    required this.updatedAt,
+    this.currentBuddiesCount,
+    this.applicableDiscount,
+  });
+
+  factory Gym.fromJson(Map<String, dynamic> json) {
+    return Gym(
+      id: json['id'].toString(),
+      name: json['name'],
+      address: json['address'],
+      lat: json['lat']?.toDouble(),
+      lng: json['lng']?.toDouble(),
+      description: json['description'],
+      ownerUserId: json['owner_user_id']?.toString(),
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: DateTime.parse(json['updated_at']),
+      currentBuddiesCount: json['current_buddies_count'],
+      applicableDiscount: json['applicable_discount'] != null
+          ? GymDiscount.fromJson(json['applicable_discount'])
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'address': address,
+      'lat': lat,
+      'lng': lng,
+      'description': description,
+      'owner_user_id': ownerUserId,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+      'current_buddies_count': currentBuddiesCount,
+      'applicable_discount': applicableDiscount?.toJson(),
+    };
+  }
+}
+
+class GymJoinRequest {
+  final String id;
+  final String gymId;
+  final String userId;
+  final String status;
+  final String? goal;
+  final DateTime? timeSlot;
+  final String? note;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  GymJoinRequest({
+    required this.id,
+    required this.gymId,
+    required this.userId,
+    required this.status,
+    this.goal,
+    this.timeSlot,
+    this.note,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory GymJoinRequest.fromJson(Map<String, dynamic> json) {
+    return GymJoinRequest(
+      id: json['id'].toString(),
+      gymId: json['gym_id'].toString(),
+      userId: json['user_id'].toString(),
+      status: json['status'],
+      goal: json['goal'],
+      timeSlot: json['time_slot'] != null
+          ? DateTime.parse(json['time_slot'])
+          : null,
+      note: json['note'],
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: DateTime.parse(json['updated_at']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'gym_id': gymId,
+      'user_id': userId,
+      'status': status,
+      'goal': goal,
+      'time_slot': timeSlot?.toIso8601String(),
+      'note': note,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+}
+
+class GymDiscount {
+  final String id;
+  final String gymId;
+  final int minGroupSize;
+  final int discountPercent;
+  final bool active;
+  final DateTime createdAt;
+
+  GymDiscount({
+    required this.id,
+    required this.gymId,
+    required this.minGroupSize,
+    required this.discountPercent,
+    required this.active,
+    required this.createdAt,
+  });
+
+  factory GymDiscount.fromJson(Map<String, dynamic> json) {
+    return GymDiscount(
+      id: json['id'].toString(),
+      gymId: json['gym_id'].toString(),
+      minGroupSize: json['min_group_size'],
+      discountPercent: json['discount_percent'],
+      active: json['active'],
+      createdAt: DateTime.parse(json['created_at']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'gym_id': gymId,
+      'min_group_size': minGroupSize,
+      'discount_percent': discountPercent,
+      'active': active,
+      'created_at': createdAt.toIso8601String(),
+    };
+  }
+}
+
+class GymBuddyGroup {
+  final String id;
+  final String gymId;
+  final String name;
+  final String? description;
+  final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  GymBuddyGroup({
+    required this.id,
+    required this.gymId,
+    required this.name,
+    this.description,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory GymBuddyGroup.fromJson(Map<String, dynamic> json) {
+    return GymBuddyGroup(
+      id: json['id'].toString(),
+      gymId: json['gym_id'].toString(),
+      name: json['name'],
+      description: json['description'],
+      status: json['status'],
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: DateTime.parse(json['updated_at']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'gym_id': gymId,
+      'name': name,
+      'description': description,
+      'status': status,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+}
+
+class GymBuddyMember {
+  final String id;
+  final String groupId;
+  final String userId;
+  final String? userName;
+  final String? goal;
+  final DateTime? timeSlot;
+  final String status;
+  final DateTime joinedAt;
+
+  GymBuddyMember({
+    required this.id,
+    required this.groupId,
+    required this.userId,
+    this.userName,
+    this.goal,
+    this.timeSlot,
+    required this.status,
+    required this.joinedAt,
+  });
+
+  factory GymBuddyMember.fromJson(Map<String, dynamic> json) {
+    return GymBuddyMember(
+      id: json['id'].toString(),
+      groupId: json['group_id'].toString(),
+      userId: json['user_id'].toString(),
+      userName: json['user_name'],
+      goal: json['goal'],
+      timeSlot: json['time_slot'] != null
+          ? DateTime.parse(json['time_slot'])
+          : null,
+      status: json['status'],
+      joinedAt: DateTime.parse(json['joined_at']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'group_id': groupId,
+      'user_id': userId,
+      'user_name': userName,
+      'goal': goal,
+      'time_slot': timeSlot?.toIso8601String(),
+      'status': status,
+      'joined_at': joinedAt.toIso8601String(),
+    };
+  }
+}
+
+class GymReview {
+  final String id;
+  final String gymId;
+  final String userId;
+  final String? userName;
+  final int rating;
+  final String? content;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  GymReview({
+    required this.id,
+    required this.gymId,
+    required this.userId,
+    this.userName,
+    required this.rating,
+    this.content,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory GymReview.fromJson(Map<String, dynamic> json) {
+    return GymReview(
+      id: json['id'].toString(),
+      gymId: json['gym_id'].toString(),
+      userId: json['user_id'].toString(),
+      userName: json['user_name'],
+      rating: json['rating'],
+      content: json['content'],
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: DateTime.parse(json['updated_at']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'gym_id': gymId,
+      'user_id': userId,
+      'user_name': userName,
+      'rating': rating,
+      'content': content,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+}
+

@@ -384,7 +384,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         IconButton(
                           icon: const Icon(Icons.favorite_border),
                           onPressed: () {
-                            ref.read(communityProvider.notifier).likePost(post.id);
+                            ref.read(communityProvider.notifier).likePost(int.parse(post.id));
                           },
                         ),
                         Text('${post.likesCount}'),

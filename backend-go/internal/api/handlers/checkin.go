@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"fittracker/internal/domain/models"
+	"gymates/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -79,8 +79,8 @@ func (h *Handlers) CreateCheckin(c *gin.Context) {
 		Type:       req.Type,
 		Notes:      req.Notes,
 		Mood:       req.Mood,
-		Energy:     req.Energy,
-		Motivation: req.Motivation,
+		Energy:     int64(req.Energy),
+		Motivation: int64(req.Motivation),
 	}
 
 	if err := h.DB.Create(checkin).Error; err != nil {

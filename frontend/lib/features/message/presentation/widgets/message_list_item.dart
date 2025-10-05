@@ -7,12 +7,14 @@ class MessageListItem extends ConsumerWidget {
   final Chat chat;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final VoidCallback? onVideoCall;
   
   const MessageListItem({
     super.key,
     required this.chat,
     this.onTap,
     this.onLongPress,
+    this.onVideoCall,
   });
 
   @override
@@ -134,21 +136,36 @@ class MessageListItem extends ConsumerWidget {
   }
 
   Widget _buildTrailing(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (chat.isPinned)
-          Icon(
-            Icons.push_pin,
-            size: 16,
-            color: Colors.grey[400],
+        // 视频通话按钮
+        if (onVideoCall != null)
+          IconButton(
+            icon: const Icon(Icons.videocam),
+            iconSize: 20,
+            color: Theme.of(context).primaryColor,
+            onPressed: onVideoCall,
           ),
-        if (chat.isMuted)
-          Icon(
-            Icons.volume_off,
-            size: 16,
-            color: Colors.grey[400],
-          ),
+        
+        // 状态图标
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (chat.isPinned)
+              Icon(
+                Icons.push_pin,
+                size: 16,
+                color: Colors.grey[400],
+              ),
+            if (chat.isMuted)
+              Icon(
+                Icons.volume_off,
+                size: 16,
+                color: Colors.grey[400],
+              ),
+          ],
+        ),
       ],
     );
   }

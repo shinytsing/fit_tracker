@@ -1,5 +1,10 @@
 import '../network/api_service.dart';
 import '../models/models.dart';
+import 'auth_api_service.dart';
+import 'bmi_api_service.dart';
+import 'workout_api_service.dart';
+import 'community_api_service.dart';
+import 'message_api_service.dart';
 
 class AuthApiService {
   final ApiService _apiService = ApiService();

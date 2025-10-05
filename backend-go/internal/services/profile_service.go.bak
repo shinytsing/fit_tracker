@@ -1,0 +1,47 @@
+package services
+
+import (
+	"fmt"
+	"time"
+
+	"gymates/internal/models"
+
+	"gorm.io/gorm"
+)
+
+type ProfileService struct {
+	db *gorm.DB
+}
+
+func NewProfileService(db *gorm.DB) *ProfileService {
+	return &ProfileService{
+		db: db,
+	}
+}
+
+// GetUserProfile 获取用户资料
+func (s *ProfileService) GetUserProfile(userID uint) (*models.User, error) {
+	var user models.User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		return nil, fmt.Errorf("用户不存在: %w", err)
+	}
+	return &user, nil
+}
+
+// UpdateUserProfile 更新用户资料
+func (s *ProfileService) UpdateUserProfile(userID uint, updates map[string]interface{}) error {
+	updates["updated_at"] = time.Now()
+	if err := s.db.Model(&models.User{}).Where("uid = ?", userID).Updates(updates).Error; err != nil {
+		return fmt.Errorf("更新用户资料失败: %w", err)
+	}
+	return nil
+}
+
+// GetUserStats 获取用户统计
+func (s *ProfileService) GetUserStats(userID uint) (*models.UserStats, error) {
+	var stats models.UserStats
+	if err := s.db.Where("user_id = ?", userID).First(&stats).Error; err != nil {
+		return nil, fmt.Errorf("获取用户统计失败: %w", err)
+	}
+	return &stats, nil
+}

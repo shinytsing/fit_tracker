@@ -4,23 +4,23 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"time"
 
-	"fittracker/internal/domain"
-	"fittracker/internal/services"
+	"gymates/internal/models"
+	"gymates/internal/services"
+
 	"github.com/gin-gonic/gin"
 )
 
 // CommunityHandler 社区相关处理器
 type CommunityHandler struct {
-	communityService *services.CommunityService
+	communityService    *services.CommunityService
 	notificationService *services.NotificationService
 }
 
 // NewCommunityHandler 创建社区处理器
 func NewCommunityHandler(communityService *services.CommunityService, notificationService *services.NotificationService) *CommunityHandler {
 	return &CommunityHandler{
-		communityService: communityService,
+		communityService:    communityService,
 		notificationService: notificationService,
 	}
 }
@@ -97,15 +97,14 @@ func (h *CommunityHandler) CreatePost(c *gin.Context) {
 	}
 
 	var req struct {
-		Content     string                    `json:"content" binding:"required"`
-		Media       []domain.MediaItem        `json:"media"`
-		Topics      []string                  `json:"topics"`
-		Location    string                    `json:"location"`
-		WorkoutData *domain.WorkoutData       `json:"workout_data"`
-		CheckInData *domain.CheckInData       `json:"check_in_data"`
-		IsAnonymous bool                      `json:"is_anonymous"`
-		Visibility  string                    `json:"visibility"` // public, friends, private
-		Tags        []string                  `json:"tags"`
+		Content     string   `json:"content" binding:"required"`
+		Images      []string `json:"images"`
+		VideoURL    string   `json:"video_url"`
+		Type        string   `json:"type"`
+		Tags        []string `json:"tags"`
+		Location    string   `json:"location"`
+		WorkoutData string   `json:"workout_data"`
+		IsPublic    bool     `json:"is_public"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -114,23 +113,32 @@ func (h *CommunityHandler) CreatePost(c *gin.Context) {
 	}
 
 	// 验证内容
-	if req.Content == "" && len(req.Media) == 0 && req.WorkoutData == nil && req.CheckInData == nil {
+	if req.Content == "" && len(req.Images) == 0 && req.VideoURL == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "内容不能为空"})
 		return
 	}
 
-	post := &domain.Post{
-		UserID:      userID,
+	// 转换 userID 为 uint
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	// 转换 tags 为 JSON 字符串
+	tagsJSON, _ := json.Marshal(req.Tags)
+	imagesJSON, _ := json.Marshal(req.Images)
+
+	post := &models.Post{
+		UserID:      uint(userIDUint),
 		Content:     req.Content,
-		Media:       req.Media,
-		Topics:      req.Topics,
+		Images:      string(imagesJSON),
+		VideoURL:    req.VideoURL,
+		Type:        req.Type,
+		Tags:        string(tagsJSON),
 		Location:    req.Location,
 		WorkoutData: req.WorkoutData,
-		CheckInData: req.CheckInData,
-		IsAnonymous: req.IsAnonymous,
-		Visibility:  req.Visibility,
-		Tags:        req.Tags,
-		Status:      domain.PostStatusPublished,
+		IsPublic:    req.IsPublic,
 	}
 
 	createdPost, err := h.communityService.CreatePost(post)
@@ -152,9 +160,8 @@ func (h *CommunityHandler) CreatePost(c *gin.Context) {
 // GET /api/v1/community/posts/:id
 func (h *CommunityHandler) GetPost(c *gin.Context) {
 	postID := c.Param("id")
-	userID := c.GetString("user_id")
 
-	post, err := h.communityService.GetPostByID(postID, userID)
+	post, err := h.communityService.GetPostByID(postID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "动态不存在"})
 		return
@@ -178,14 +185,14 @@ func (h *CommunityHandler) UpdatePost(c *gin.Context) {
 	}
 
 	var req struct {
-		Content     string                    `json:"content"`
-		Media       []domain.MediaItem        `json:"media"`
-		Topics      []string                  `json:"topics"`
-		Location    string                    `json:"location"`
-		WorkoutData *domain.WorkoutData       `json:"workout_data"`
-		CheckInData *domain.CheckInData       `json:"check_in_data"`
-		Visibility  string                    `json:"visibility"`
-		Tags        []string                  `json:"tags"`
+		Content     string   `json:"content"`
+		Images      []string `json:"images"`
+		VideoURL    string   `json:"video_url"`
+		Type        string   `json:"type"`
+		Tags        []string `json:"tags"`
+		Location    string   `json:"location"`
+		WorkoutData string   `json:"workout_data"`
+		IsPublic    bool     `json:"is_public"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -194,28 +201,41 @@ func (h *CommunityHandler) UpdatePost(c *gin.Context) {
 	}
 
 	// 检查动态所有权
-	post, err := h.communityService.GetPostByID(postID, userID)
+	post, err := h.communityService.GetPostByID(postID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "动态不存在"})
 		return
 	}
 
-	if post.UserID != userID {
+	// 转换 userID 为 uint 进行比较
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	if post.UserID != uint(userIDUint) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "无权限修改此动态"})
 		return
 	}
 
-	// 更新动态
-	post.Content = req.Content
-	post.Media = req.Media
-	post.Topics = req.Topics
-	post.Location = req.Location
-	post.WorkoutData = req.WorkoutData
-	post.CheckInData = req.CheckInData
-	post.Visibility = req.Visibility
-	post.Tags = req.Tags
+	// 转换 tags 为 JSON 字符串
+	tagsJSON, _ := json.Marshal(req.Tags)
+	imagesJSON, _ := json.Marshal(req.Images)
 
-	updatedPost, err := h.communityService.UpdatePost(post)
+	// 更新动态
+	updates := map[string]interface{}{
+		"content":      req.Content,
+		"images":       string(imagesJSON),
+		"video_url":    req.VideoURL,
+		"type":         req.Type,
+		"tags":         string(tagsJSON),
+		"location":     req.Location,
+		"workout_data": req.WorkoutData,
+		"is_public":    req.IsPublic,
+	}
+
+	updatedPost, err := h.communityService.UpdatePost(postID, updates)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -239,13 +259,20 @@ func (h *CommunityHandler) DeletePost(c *gin.Context) {
 	}
 
 	// 检查动态所有权
-	post, err := h.communityService.GetPostByID(postID, userID)
+	post, err := h.communityService.GetPostByID(postID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "动态不存在"})
 		return
 	}
 
-	if post.UserID != userID {
+	// 转换 userID 为 uint 进行比较
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	if post.UserID != uint(userIDUint) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "无权限删除此动态"})
 		return
 	}
@@ -280,7 +307,7 @@ func (h *CommunityHandler) LikePost(c *gin.Context) {
 	}
 
 	// 异步处理通知
-	go h.notificationService.NotifyPostLiked(userID, postID, isLiked)
+	go h.notificationService.NotifyPostLiked(postID, userID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -302,9 +329,9 @@ func (h *CommunityHandler) CreateComment(c *gin.Context) {
 	}
 
 	var req struct {
-		Content    string `json:"content" binding:"required"`
-		ParentID   string `json:"parent_id"` // 回复评论的ID
-		ReplyToID  string `json:"reply_to_id"` // 回复的用户ID
+		Content   string `json:"content" binding:"required"`
+		ParentID  string `json:"parent_id"`   // 回复评论的ID
+		ReplyToID string `json:"reply_to_id"` // 回复的用户ID
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -312,16 +339,7 @@ func (h *CommunityHandler) CreateComment(c *gin.Context) {
 		return
 	}
 
-	comment := &domain.Comment{
-		PostID:    postID,
-		UserID:    userID,
-		Content:   req.Content,
-		ParentID:  req.ParentID,
-		ReplyToID: req.ReplyToID,
-		Status:    domain.CommentStatusPublished,
-	}
-
-	createdComment, err := h.communityService.CreateComment(comment)
+	createdComment, err := h.communityService.CreateComment(postID, userID, req.Content)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -340,14 +358,12 @@ func (h *CommunityHandler) CreateComment(c *gin.Context) {
 // GET /api/v1/community/posts/:id/comments
 func (h *CommunityHandler) GetComments(c *gin.Context) {
 	postID := c.Param("id")
-	userID := c.GetString("user_id")
 
 	// 获取查询参数
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	sortBy := c.DefaultQuery("sort_by", "created_at") // created_at, like_count
 
-	comments, total, err := h.communityService.GetComments(postID, userID, page, limit, sortBy)
+	comments, hasMore, err := h.communityService.GetComments(postID, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -356,11 +372,10 @@ func (h *CommunityHandler) GetComments(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"comments":   comments,
-			"total":      total,
-			"page":       page,
-			"limit":      limit,
-			"total_page": (total + limit - 1) / limit,
+			"comments": comments,
+			"has_more": hasMore,
+			"page":     page,
+			"limit":    limit,
 		},
 	})
 }
@@ -383,7 +398,14 @@ func (h *CommunityHandler) DeleteComment(c *gin.Context) {
 		return
 	}
 
-	if comment.UserID != userID {
+	// 转换 userID 为 uint 进行比较
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的用户ID"})
+		return
+	}
+
+	if comment.UserID != uint(userIDUint) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "无权限删除此评论"})
 		return
 	}
@@ -421,7 +443,7 @@ func (h *CommunityHandler) SharePost(c *gin.Context) {
 		return
 	}
 
-	shareRecord, err := h.communityService.RecordShare(userID, postID, req.Platform, req.Message)
+	err := h.communityService.RecordShare(postID, userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -429,7 +451,7 @@ func (h *CommunityHandler) SharePost(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    shareRecord,
+		"message": "分享记录成功",
 	})
 }
 
@@ -469,10 +491,9 @@ func (h *CommunityHandler) FollowUser(c *gin.Context) {
 // GetUserProfile 获取用户主页
 // GET /api/v1/community/users/:id
 func (h *CommunityHandler) GetUserProfile(c *gin.Context) {
-	userID := c.GetString("user_id")
 	targetUserID := c.Param("id")
 
-	profile, err := h.communityService.GetUserProfile(targetUserID, userID)
+	profile, err := h.communityService.GetUserProfile(targetUserID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 		return
@@ -488,13 +509,12 @@ func (h *CommunityHandler) GetUserProfile(c *gin.Context) {
 // GET /api/v1/community/users/:id/posts
 func (h *CommunityHandler) GetUserPosts(c *gin.Context) {
 	targetUserID := c.Param("id")
-	userID := c.GetString("user_id")
 
 	// 获取查询参数
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 
-	posts, total, err := h.communityService.GetUserPosts(targetUserID, userID, page, limit)
+	posts, hasMore, err := h.communityService.GetUserPosts(targetUserID, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -503,11 +523,8 @@ func (h *CommunityHandler) GetUserPosts(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"posts":      posts,
-			"total":      total,
-			"page":       page,
-			"limit":      limit,
-			"total_page": (total + limit - 1) / limit,
+			"posts":    posts,
+			"has_more": hasMore,
 		},
 	})
 }

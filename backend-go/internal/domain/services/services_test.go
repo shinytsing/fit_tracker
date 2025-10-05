@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"fittracker/internal/domain/models"
+	"gymates/internal/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

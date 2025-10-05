@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"fittracker/internal/config"
+	"gymates/internal/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )

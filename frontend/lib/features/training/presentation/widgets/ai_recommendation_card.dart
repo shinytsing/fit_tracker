@@ -40,7 +40,7 @@ class AiRecommendationCard extends ConsumerWidget {
                   color: Colors.blue.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   MdiIcons.robot,
                   color: Colors.blue,
                   size: 20,
@@ -132,8 +132,8 @@ class AiRecommendationCard extends ConsumerWidget {
                   onPressed: () {
                     // TODO: 查看详细推荐
                   },
-                  icon: const Icon(MdiIcons.eye),
-                  label: const Text('查看详情'),
+                  icon: Icon(MdiIcons.eye),
+                  label: Text('查看详情'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.blue[700],
                     side: BorderSide(color: Colors.blue[300]!),
@@ -157,7 +157,7 @@ class AiRecommendationCard extends ConsumerWidget {
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
-                    : const Icon(MdiIcons.robot),
+                    : Icon(MdiIcons.robot),
                   label: Text(
                     trainingState.isGeneratingAi ? '生成中...' : '生成计划',
                   ),
@@ -186,7 +186,7 @@ class AiRecommendationCard extends ConsumerWidget {
         name,
         style: TextStyle(
           fontSize: 12,
-          color: color[700],
+          color: color.shade700,
           fontWeight: FontWeight.w500,
         ),
       ),

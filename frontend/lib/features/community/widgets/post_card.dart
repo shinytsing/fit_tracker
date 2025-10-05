@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
-import '../../core/models/models.dart';
-import '../../core/providers/community_provider.dart';
-import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/custom_widgets.dart';
+import '../../../core/models/models.dart';
+import '../../../core/providers/community_provider.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/custom_widgets.dart';
 
 /// 动态卡片组件
 class PostCard extends ConsumerWidget {
@@ -333,7 +333,7 @@ class PostCard extends ConsumerWidget {
           icon: Icons.favorite_border,
           activeIcon: Icons.favorite,
           label: post.likesCount.toString(),
-          onTap: () => notifier.likePost(post.id),
+          onTap: () => notifier.likePost(int.parse(post.id)),
           isActive: false, // TODO: 检查是否已点赞
         ),
         const SizedBox(width: 24),
@@ -352,7 +352,7 @@ class PostCard extends ConsumerWidget {
         _buildActionButton(
           icon: Icons.bookmark_border,
           activeIcon: Icons.bookmark,
-          onTap: () => notifier.favoritePost(post.id),
+          onTap: () => notifier.favoritePost(int.parse(post.id)),
           isActive: false, // TODO: 检查是否已收藏
         ),
         const SizedBox(width: 24),

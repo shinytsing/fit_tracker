@@ -1,0 +1,52 @@
+package services
+
+import (
+	"gymates/internal/config"
+
+	"github.com/go-redis/redis/v8"
+	"gorm.io/gorm"
+)
+
+// Services 服务容器
+type Services struct {
+	UserService         *UserService
+	UserProfileService  *UserProfileService
+	AuthService         *AuthService
+	CommunityService    *CommunityService
+	AIService           *AIService
+	TrainingService     *TrainingService
+	RestService         *RestService
+	GymService          *GymService
+	MessageService      *MessageService
+	ProfileService      *ProfileService
+	BuddyService        *BuddyService
+}
+
+// NewServices 创建服务容器
+func NewServices(cfg *config.Config, db *gorm.DB, redisClient *redis.Client) *Services {
+	userService := NewUserService(db, redisClient)
+	userProfileService := NewUserProfileService(db)
+	authService := NewAuthService(cfg, userService)
+	communityService := NewCommunityService(db)
+	aiService := NewAIService(cfg)
+	trainingService := NewTrainingService(db, aiService, userService)
+	restService := NewRestService(db)
+	gymService := NewGymService(db)
+	messageService := NewMessageService(db)
+	profileService := NewProfileService(db)
+	buddyService := NewBuddyService(db)
+
+	return &Services{
+		UserService:         userService,
+		UserProfileService:  userProfileService,
+		AuthService:         authService,
+		CommunityService:    communityService,
+		AIService:           aiService,
+		TrainingService:     trainingService,
+		RestService:         restService,
+		GymService:          gymService,
+		MessageService:      messageService,
+		ProfileService:      profileService,
+		BuddyService:        buddyService,
+	}
+}

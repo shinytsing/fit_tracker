@@ -13,7 +13,7 @@ class User(Base):
     """用户模型"""
     __tablename__ = "users"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String(50), unique=True, nullable=False, index=True)
     email = Column(String(100), unique=True, nullable=False, index=True)
     phone = Column(String(20), unique=True, nullable=True)
@@ -22,6 +22,7 @@ class User(Base):
     bio = Column(Text, nullable=True)
     fitness_goal = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -46,8 +47,8 @@ class Checkin(Base):
     """健身打卡模型"""
     __tablename__ = "checkins"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     content = Column(Text, nullable=False)
     images = Column(JSON, nullable=True)  # 存储图片URL数组
     tags = Column(JSON, nullable=True)    # 存储标签数组
@@ -66,8 +67,8 @@ class Workout(Base):
     """运动记录模型"""
     __tablename__ = "workouts"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     workout_type = Column(String(50), nullable=False, index=True)  # 跑步、骑行、游泳等
     duration_minutes = Column(Integer, nullable=False)
     distance_km = Column(Float, nullable=True)
@@ -85,8 +86,8 @@ class NutritionLog(Base):
     """营养记录模型"""
     __tablename__ = "nutrition_logs"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     food_name = Column(String(100), nullable=False)
     quantity = Column(Float, nullable=False)  # 数量
     unit = Column(String(20), nullable=False)  # 单位(g, ml, 个等)
@@ -106,8 +107,8 @@ class HealthRecord(Base):
     """健康记录模型"""
     __tablename__ = "health_records"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     record_type = Column(String(50), nullable=False, index=True)  # 心率、血压、睡眠、体重等
     value = Column(Float, nullable=False)
     unit = Column(String(20), nullable=True)
@@ -123,8 +124,8 @@ class TrainingPlan(Base):
     """训练计划模型"""
     __tablename__ = "training_plans"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     plan_name = Column(String(100), nullable=False)
     plan_type = Column(String(50), nullable=False)  # 减脂、增肌、塑形、耐力
     difficulty_level = Column(String(20), nullable=False)  # 初级、中级、高级
@@ -142,7 +143,7 @@ class Exercise(Base):
     """运动动作模型"""
     __tablename__ = "exercises"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(100), nullable=False, index=True)
     category = Column(String(50), nullable=False, index=True)  # 力量、有氧、柔韧性
     muscle_groups = Column(JSON, nullable=True)  # 目标肌群
@@ -157,7 +158,7 @@ class Challenge(Base):
     """挑战赛模型"""
     __tablename__ = "challenges"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
     challenge_type = Column(String(50), nullable=False)  # 减脂、增肌、耐力、习惯养成
@@ -173,9 +174,9 @@ class ChallengeParticipant(Base):
     """挑战参与者模型"""
     __tablename__ = "challenge_participants"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    challenge_id = Column(UUID(as_uuid=True), ForeignKey("challenges.id"), nullable=False, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    challenge_id = Column(String(36), ForeignKey("challenges.id"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     current_progress = Column(Float, default=0)
     is_completed = Column(Boolean, default=False)
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -185,9 +186,9 @@ class Follow(Base):
     """关注关系模型"""
     __tablename__ = "follows"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    follower_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    following_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    follower_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    following_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # 关系
@@ -198,9 +199,9 @@ class Like(Base):
     """点赞模型"""
     __tablename__ = "likes"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    checkin_id = Column(UUID(as_uuid=True), ForeignKey("checkins.id"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    checkin_id = Column(String(36), ForeignKey("checkins.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # 关系
@@ -211,11 +212,11 @@ class Comment(Base):
     """评论模型"""
     __tablename__ = "comments"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    checkin_id = Column(UUID(as_uuid=True), ForeignKey("checkins.id"), nullable=False, index=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    checkin_id = Column(String(36), ForeignKey("checkins.id"), nullable=False, index=True)
     content = Column(Text, nullable=False)
-    parent_id = Column(UUID(as_uuid=True), ForeignKey("comments.id"), nullable=True, index=True)
+    parent_id = Column(String(36), ForeignKey("comments.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
@@ -223,3 +224,190 @@ class Comment(Base):
     user = relationship("User", back_populates="comments")
     checkin = relationship("Checkin", back_populates="comments")
     parent = relationship("Comment", remote_side=[id], backref="replies")
+
+class Post(Base):
+    """动态模型"""
+    __tablename__ = "posts"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    images = Column(JSON, nullable=True)
+    tags = Column(JSON, nullable=True)
+    post_type = Column(String(50), default='dynamic')
+    mood_type = Column(String(50), nullable=True)
+    nutrition_data = Column(JSON, nullable=True)
+    training_data = Column(JSON, nullable=True)
+    like_count = Column(Integer, default=0)
+    comment_count = Column(Integer, default=0)
+    share_count = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # 关系
+    user = relationship("User")
+    likes = relationship("PostLike", back_populates="post", cascade="all, delete-orphan")
+    comments = relationship("PostComment", back_populates="post", cascade="all, delete-orphan")
+
+class Draft(Base):
+    """草稿模型"""
+    __tablename__ = "drafts"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    images = Column(JSON, nullable=True)
+    tags = Column(JSON, nullable=True)
+    post_type = Column(String(50), default='dynamic')
+    mood_type = Column(String(50), nullable=True)
+    nutrition_data = Column(JSON, nullable=True)
+    training_data = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # 关系
+    user = relationship("User")
+
+class PostLike(Base):
+    """动态点赞模型"""
+    __tablename__ = "post_likes"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    post_id = Column(String(36), ForeignKey("posts.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # 关系
+    user = relationship("User")
+    post = relationship("Post", back_populates="likes")
+
+class PostComment(Base):
+    """动态评论模型"""
+    __tablename__ = "post_comments"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    post_id = Column(String(36), ForeignKey("posts.id"), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    parent_id = Column(String(36), ForeignKey("post_comments.id"), nullable=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # 关系
+    user = relationship("User")
+    post = relationship("Post", back_populates="comments")
+    parent = relationship("PostComment", remote_side=[id], backref="replies")
+
+class Chat(Base):
+    """聊天模型"""
+    __tablename__ = "chats"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user1_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user2_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # 关系
+    user1 = relationship("User", foreign_keys=[user1_id])
+    user2 = relationship("User", foreign_keys=[user2_id])
+    messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan")
+
+class Message(Base):
+    """消息模型"""
+    __tablename__ = "messages"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    chat_id = Column(String(36), ForeignKey("chats.id"), nullable=False, index=True)
+    sender_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    message_type = Column(String(20), default='text')
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # 关系
+    chat = relationship("Chat", back_populates="messages")
+    sender = relationship("User")
+
+class WorkoutRecord(Base):
+    """训练记录模型"""
+    __tablename__ = "workout_records"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    plan_id = Column(String(36), ForeignKey("training_plans.id"), nullable=True, index=True)
+    plan_name = Column(String(100), nullable=False)
+    duration_minutes = Column(Integer, nullable=False)
+    calories_burned = Column(Integer, nullable=True)
+    exercises_completed = Column(JSON, nullable=True)
+    notes = Column(Text, nullable=True)
+    workout_date = Column(Date, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # 关系
+    user = relationship("User")
+    plan = relationship("TrainingPlan")
+
+class BMIRecord(Base):
+    """BMI记录模型"""
+    __tablename__ = "bmi_records"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    height = Column(Float, nullable=False)
+    weight = Column(Float, nullable=False)
+    bmi = Column(Float, nullable=False)
+    age = Column(Integer, nullable=True)
+    gender = Column(String(10), nullable=True)
+    recorded_at = Column(Date, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # 关系
+    user = relationship("User")
+
+class Group(Base):
+    """群组模型"""
+    __tablename__ = "groups"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    avatar_url = Column(String(500), nullable=True)
+    creator_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    member_count = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # 关系
+    creator = relationship("User", foreign_keys=[creator_id])
+
+class GroupMember(Base):
+    """群组成员模型"""
+    __tablename__ = "group_members"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    group_id = Column(String(36), ForeignKey("groups.id"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    role = Column(String(20), default='member')  # member, admin, owner
+    joined_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # 关系
+    group = relationship("Group")
+    user = relationship("User")
+
+class Notification(Base):
+    """通知模型"""
+    __tablename__ = "notifications"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    type = Column(String(50), nullable=False)  # like, comment, follow, challenge, system
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False)
+    data = Column(JSON, nullable=True)  # 额外数据
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # 关系
+    user = relationship("User")

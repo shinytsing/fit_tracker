@@ -1,21 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import 'core/config/app_config.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
-import 'core/services/api_service.dart';
-import 'core/services/storage_service.dart';
-import 'core/services/auth_service.dart';
+import 'test_api_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // 初始化服务
-  await StorageService.init();
-  await ApiService.init();
-  await AuthService.init();
   
   runApp(
     const ProviderScope(

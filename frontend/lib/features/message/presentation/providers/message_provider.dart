@@ -12,6 +12,8 @@ class MessageState with _$MessageState {
     @Default([]) List<Group> groups,
     @Default([]) List<NotificationItem> notifications,
     @Default([]) List<NotificationItem> systemMessages,
+    @Default([]) List<Message> chatMessages,
+    @Default([]) List<String> typingUsers,
     @Default(false) bool isConnected,
     @Default(0) int unreadMessagesCount,
     @Default(0) int unreadNotificationsCount,
@@ -19,14 +21,6 @@ class MessageState with _$MessageState {
     @Default(0) int videoCallsCount,
     String? error,
   }) = _MessageState;
-}
-
-enum MessageStatus {
-  sending,
-  sent,
-  delivered,
-  read,
-  failed,
 }
 
 // Provider
@@ -226,11 +220,11 @@ class MessageNotifier extends StateNotifier<MessageState> {
   List<NotificationItem> _generateMockNotifications() {
     return List.generate(10, (index) {
       final types = [
-        'like',
-        'comment',
-        'follow',
-        'workout',
-        'achievement',
+        NotificationType.like,
+        NotificationType.comment,
+        NotificationType.follow,
+        NotificationType.workout,
+        NotificationType.achievement,
       ];
       
       return NotificationItem(
@@ -250,52 +244,214 @@ class MessageNotifier extends StateNotifier<MessageState> {
         id: 'system_$index',
         title: '系统通知',
         content: '欢迎使用FitTracker！完成个人资料设置可获得更多个性化推荐。',
-        type: 'system',
+        type: NotificationType.system,
         createdAt: DateTime.now().subtract(Duration(days: index)),
         isRead: index % 2 == 0,
       );
     });
   }
 
-  String _getNotificationTitle(String type) {
+  String _getNotificationTitle(NotificationType type) {
     switch (type) {
-      case 'like':
+      case NotificationType.like:
         return '点赞通知';
-      case 'comment':
+      case NotificationType.comment:
         return '评论通知';
-      case 'follow':
+      case NotificationType.follow:
         return '关注通知';
-      case 'workout':
+      case NotificationType.workout:
         return '训练提醒';
-      case 'achievement':
+      case NotificationType.achievement:
         return '成就解锁';
-      case 'system':
+      case NotificationType.system:
         return '系统通知';
-      case 'promotion':
-        return '活动通知';
-      default:
-        return '通知';
+      case NotificationType.challenge:
+        return '挑战通知';
+      case NotificationType.message:
+        return '消息通知';
     }
   }
 
-  String _getNotificationContent(String type) {
+  String _getNotificationContent(NotificationType type) {
     switch (type) {
-      case 'like':
+      case NotificationType.like:
         return '用户点赞了您的训练记录';
-      case 'comment':
+      case NotificationType.comment:
         return '用户评论了您的动态';
-      case 'follow':
+      case NotificationType.follow:
         return '用户关注了您';
-      case 'workout':
+      case NotificationType.workout:
         return '该进行今天的训练了！';
-      case 'achievement':
+      case NotificationType.achievement:
         return '恭喜！您解锁了新成就';
-      case 'system':
+      case NotificationType.system:
         return '系统维护通知';
-      case 'promotion':
-        return '限时活动开始啦！';
-      default:
-        return '您有一条新通知';
+      case NotificationType.challenge:
+        return '新的挑战开始了！';
+      case NotificationType.message:
+        return '您有新的消息';
+    }
+  }
+
+  // 添加缺失的方法和属性
+  Map<String, List<Message>> get chatMessages => _chatMessages;
+  Map<String, List<String>> get typingUsers => _typingUsers;
+  
+  final Map<String, List<Message>> _chatMessages = {};
+  final Map<String, List<String>> _typingUsers = {};
+
+  Future<void> loadChatMessages(String chatId) async {
+    try {
+      // TODO: 从API加载聊天消息
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      if (!_chatMessages.containsKey(chatId)) {
+        _chatMessages[chatId] = [];
+      }
+      
+      // 生成模拟消息
+      final messages = _generateMockMessages(chatId);
+      _chatMessages[chatId] = messages;
+      
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  Future<void> loadMoreMessages(String chatId) async {
+    try {
+      // TODO: 从API加载更多消息
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      if (!_chatMessages.containsKey(chatId)) {
+        _chatMessages[chatId] = [];
+      }
+      
+      // 生成更多模拟消息
+      final moreMessages = _generateMockMessages(chatId, count: 10);
+      _chatMessages[chatId] = [...moreMessages, ..._chatMessages[chatId]!];
+      
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  Future<void> sendTypingStatus(String chatId, bool isTyping) async {
+    try {
+      if (!_typingUsers.containsKey(chatId)) {
+        _typingUsers[chatId] = [];
+      }
+      
+      if (isTyping) {
+        if (!_typingUsers[chatId]!.contains('current_user')) {
+          _typingUsers[chatId]!.add('current_user');
+        }
+      } else {
+        _typingUsers[chatId]!.remove('current_user');
+      }
+      
+      // TODO: 通过WebSocket发送正在输入状态
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  Future<void> sendMessage(
+    String chatId,
+    MessageType type, {
+    String? content,
+    String? mediaPath,
+  }) async {
+    try {
+      if (!_chatMessages.containsKey(chatId)) {
+        _chatMessages[chatId] = [];
+      }
+      
+      final message = Message(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        chatId: chatId,
+        senderId: 'current_user',
+        content: content ?? '',
+        type: type,
+        timestamp: DateTime.now(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        mediaUrl: mediaPath,
+        status: MessageStatus.sending,
+      );
+      
+      _chatMessages[chatId]!.add(message);
+      
+      // TODO: 发送到服务器
+      await Future.delayed(const Duration(milliseconds: 1000));
+      
+      // 更新消息状态为已发送
+      final updatedMessages = _chatMessages[chatId]!.map((msg) {
+        if (msg.id == message.id) {
+          return msg.copyWith(status: MessageStatus.sent);
+        }
+        return msg;
+      }).toList();
+      
+      _chatMessages[chatId] = updatedMessages;
+      
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  List<Message> _generateMockMessages(String chatId, {int count = 20}) {
+    final messages = <Message>[];
+    final now = DateTime.now();
+    
+    for (int i = 0; i < count; i++) {
+      final isFromCurrentUser = i % 2 == 0;
+      messages.add(Message(
+        id: '${chatId}_msg_$i',
+        chatId: chatId,
+        senderId: isFromCurrentUser ? 'current_user' : 'other_user',
+        content: '这是第 $i 条消息',
+        type: MessageType.text,
+        timestamp: now.subtract(Duration(minutes: i * 5)),
+        createdAt: now.subtract(Duration(minutes: i * 5)),
+        updatedAt: now.subtract(Duration(minutes: i * 5)),
+        status: MessageStatus.read,
+      ));
+    }
+    
+    return messages;
+  }
+
+  // 添加缺失的方法
+  Future<void> deleteMessage(String messageId) async {
+    try {
+      // TODO: 实现删除消息逻辑
+      state = state.copyWith(isLoading: true);
+      
+      // 模拟删除操作
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  Future<void> clearChatHistory(String chatId) async {
+    try {
+      // TODO: 实现清空聊天记录逻辑
+      state = state.copyWith(isLoading: true);
+      
+      // 模拟清空操作
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
     }
   }
 }

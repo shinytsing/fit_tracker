@@ -6,8 +6,7 @@ import (
 	"log"
 	"time"
 
-	"fittracker/internal/config"
-	"fittracker/internal/models"
+	"gymates/internal/config"
 
 	"github.com/go-redis/redis/v8"
 	"gorm.io/driver/postgres"
@@ -49,13 +48,21 @@ func Initialize(cfg *config.Config) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	// 自动迁移数据库表
-	// 暂时禁用自动迁移，使用现有数据库表
+	// 自动迁移数据库表 (暂时禁用，因为用户表已存在)
 	// if err := autoMigrate(db); err != nil {
 	// 	return nil, fmt.Errorf("failed to migrate database: %w", err)
 	// }
 
 	log.Println("Database connected successfully")
+
+	// 测试数据库连接和表是否存在
+	var count int64
+	if err := db.Table("posts").Count(&count).Error; err != nil {
+		log.Printf("Error checking posts table: %v", err)
+	} else {
+		log.Printf("Posts table exists, count: %d", count)
+	}
+
 	return db, nil
 }
 
@@ -78,17 +85,7 @@ func InitializeRedis(cfg *config.Config) (*redis.Client, error) {
 }
 
 func autoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate(
-		&models.User{},
-		&models.Post{},
-		&models.PostLike{},
-		&models.PostComment{},
-		&models.Follow{},
-		&models.TrainingPlan{},
-		&models.TrainingExercise{},
-		&models.ExerciseSet{},
-		&models.CheckIn{},
-		&models.AIModel{},
-		&models.AIRequest{},
-	)
+	// 先只迁移基础模型，避免复杂的依赖关系
+	// 暂时注释掉autoMigrate，因为很多模型定义丢失
+	return nil
 }

@@ -1,0 +1,61 @@
+{
+  "testReport": {
+    "testName": "FitTracker 全链路按钮测试与自动修复报告",
+    "timestamp": "2025-10-02T12:11:07.203985",
+    "summary": {
+      "totalButtons": 2,
+      "passedButtons": 0,
+      "failedButtons": 2,
+      "successRate": "0.0"
+    },
+    "buttonTests": [
+      {
+        "button_name": "注册按钮",
+        "api_endpoint": "/auth/register",
+        "method": "POST",
+        "timestamp": "2025-10-02T12:11:07.192258",
+        "status": "❌ 失败",
+        "error": "Exception: API响应状态码不符合预期: 404"
+      },
+      {
+        "button_name": "登录按钮",
+        "api_endpoint": "/auth/login",
+        "method": "POST",
+        "timestamp": "2025-10-02T12:11:07.201273",
+        "status": "❌ 失败",
+        "error": "Exception: API响应状态码不符合预期: 404"
+      }
+    ],
+    "autoFixes": [
+      {
+        "type": "backend_connection",
+        "status": "failed",
+        "description": "自动修复失败: Exception: 自动修复失败",
+        "timestamp": "2025-10-02T12:11:07.190917"
+      },
+      {
+        "type": "missing_endpoint",
+        "endpoint": "/auth/register",
+        "method": "POST",
+        "status": "attempted",
+        "description": "尝试创建缺失的API端点",
+        "timestamp": "2025-10-02T12:11:07.200990"
+      },
+      {
+        "type": "missing_endpoint",
+        "endpoint": "/auth/login",
+        "method": "POST",
+        "status": "attempted",
+        "description": "尝试创建缺失的API端点",
+        "timestamp": "2025-10-02T12:11:07.202688"
+      }
+    ],
+    "systemHealth": {
+      "backend_health": {
+        "status": "❌ 失败",
+        "error": "Exception: 后端服务健康检查失败",
+        "timestamp": "2025-10-02T12:11:02.123089"
+      }
+    }
+  }
+}

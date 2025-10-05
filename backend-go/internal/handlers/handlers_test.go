@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"bytes"
@@ -7,10 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"fittracker/internal/config"
-	"fittracker/internal/handlers"
-	"fittracker/internal/routes"
-	"fittracker/internal/services"
+	"gymates/internal/config"
+	"gymates/internal/handlers"
+	"gymates/internal/routes"
+	"gymates/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

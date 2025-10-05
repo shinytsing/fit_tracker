@@ -66,6 +66,10 @@ type TrainingPlan struct {
 	UpdatedAt     time.Time          `json:"updated_at"`
 }
 
+func (TrainingPlan) TableName() string {
+	return "training_plans"
+}
+
 type TrainingExercise struct {
 	ID           string        `json:"id" gorm:"primaryKey"`
 	PlanID       string        `json:"plan_id" gorm:"not null"`
@@ -331,16 +335,16 @@ type AIChatRequest struct {
 
 // 签到相关模型
 type CheckIn struct {
-	ID        string    `json:"id" gorm:"primaryKey"`
-	UserID    string    `json:"user_id" gorm:"not null"`
-	Date      time.Time `json:"date" gorm:"not null"`
-	Type      string    `json:"type"` // 训练、饮食、休息等
-	Notes     string    `json:"notes"`
-	Mood      string    `json:"mood"` // 心情状态
-	Energy    int       `json:"energy"` // 能量等级 1-10
-	Motivation int      `json:"motivation"` // 动力等级 1-10
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID         string    `json:"id" gorm:"primaryKey"`
+	UserID     string    `json:"user_id" gorm:"not null"`
+	Date       time.Time `json:"date" gorm:"not null"`
+	Type       string    `json:"type"` // 训练、饮食、休息等
+	Notes      string    `json:"notes"`
+	Mood       string    `json:"mood"`       // 心情状态
+	Energy     int       `json:"energy"`     // 能量等级 1-10
+	Motivation int       `json:"motivation"` // 动力等级 1-10
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 
 	// 关联数据
 	User User `json:"user" gorm:"foreignKey:UserID"`
@@ -348,22 +352,22 @@ type CheckIn struct {
 
 // 训练计划相关模型（扩展）
 type WorkoutPlan struct {
-	ID          string             `json:"id" gorm:"primaryKey"`
-	UserID      string             `json:"user_id" gorm:"not null"`
-	Name        string             `json:"name" gorm:"not null"`
-	Description string             `json:"description"`
-	Type        string             `json:"type"` // 全身、上肢、下肢等
-	Difficulty  string             `json:"difficulty"` // 初级、中级、高级
-	Duration    int                `json:"duration"` // 分钟
-	IsPublic    bool               `json:"is_public"`
-	IsAI        bool               `json:"is_ai"`
-	CreatedAt   time.Time          `json:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at"`
-	
+	ID          string    `json:"id" gorm:"primaryKey"`
+	UserID      string    `json:"user_id" gorm:"not null"`
+	Name        string    `json:"name" gorm:"not null"`
+	Description string    `json:"description"`
+	Type        string    `json:"type"`       // 全身、上肢、下肢等
+	Difficulty  string    `json:"difficulty"` // 初级、中级、高级
+	Duration    int       `json:"duration"`   // 分钟
+	IsPublic    bool      `json:"is_public"`
+	IsAI        bool      `json:"is_ai"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+
 	// 关联数据
-	User      User               `json:"user" gorm:"foreignKey:UserID"`
-	Exercises []WorkoutExercise  `json:"exercises" gorm:"foreignKey:PlanID"`
-	Sessions  []WorkoutSession   `json:"sessions" gorm:"foreignKey:PlanID"`
+	User      User              `json:"user" gorm:"foreignKey:UserID"`
+	Exercises []WorkoutExercise `json:"exercises" gorm:"foreignKey:PlanID"`
+	Sessions  []WorkoutSession  `json:"sessions" gorm:"foreignKey:PlanID"`
 }
 
 type WorkoutSession struct {
@@ -422,23 +426,23 @@ type PostComment struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// 关联数据
-	Post   Post   `json:"post" gorm:"foreignKey:PostID"`
-	User   User   `json:"user" gorm:"foreignKey:UserID"`
-	Parent *PostComment `json:"parent" gorm:"foreignKey:ParentID"`
+	Post    Post          `json:"post" gorm:"foreignKey:PostID"`
+	User    User          `json:"user" gorm:"foreignKey:UserID"`
+	Parent  *PostComment  `json:"parent" gorm:"foreignKey:ParentID"`
 	Replies []PostComment `json:"replies" gorm:"foreignKey:ParentID"`
 }
 
 // AI相关模型
 type AIModel struct {
-	ID          string    `json:"id" gorm:"primaryKey"`
-	Name        string    `json:"name" gorm:"not null"`
-	Provider    string    `json:"provider"` // deepseek, openai, etc.
-	ModelName   string    `json:"model_name"`
-	APIKey      string    `json:"api_key"`
-	BaseURL     string    `json:"base_url"`
-	IsActive    bool      `json:"is_active"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID        string    `json:"id" gorm:"primaryKey"`
+	Name      string    `json:"name" gorm:"not null"`
+	Provider  string    `json:"provider"` // deepseek, openai, etc.
+	ModelName string    `json:"model_name"`
+	APIKey    string    `json:"api_key"`
+	BaseURL   string    `json:"base_url"`
+	IsActive  bool      `json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type AIRequest struct {
@@ -475,4 +479,40 @@ type MediaFile struct {
 
 	// 关联数据
 	User User `json:"user" gorm:"foreignKey:UserID"`
+}
+
+// ==================== 搭子模块 ====================
+
+// Team 搭子团队模型
+type Team struct {
+	ID          uint      `json:"id" gorm:"primaryKey,autoIncrement"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Name        string    `json:"name" gorm:"not null"`
+	Description string    `json:"description"`
+	CreatorID   uint      `json:"creator_id" gorm:"not null"`
+	Members     string    `json:"members" gorm:"type:json"` // JSON数组存储成员ID
+	MaxMembers  int       `json:"max_members" gorm:"default:10"`
+	Status      string    `json:"status" gorm:"default:'active'"` // active, inactive, full
+	Tags        string    `json:"tags" gorm:"type:json"`          // JSON数组存储标签
+	Location    string    `json:"location"`
+	IsPublic    bool      `json:"is_public" gorm:"default:true"`
+
+	// 关联关系
+	Creator User `json:"creator" gorm:"foreignKey:CreatorID"`
+}
+
+// CreateTeamRequest 创建搭子请求
+type CreateTeamRequest struct {
+	Name        string   `json:"name" binding:"required"`
+	Description string   `json:"description"`
+	MaxMembers  int      `json:"max_members"`
+	Tags        []string `json:"tags"`
+	Location    string   `json:"location"`
+	IsPublic    bool     `json:"is_public"`
+}
+
+// JoinTeamRequest 加入搭子请求
+type JoinTeamRequest struct {
+	Message string `json:"message"` // 申请加入的消息
 }

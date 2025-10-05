@@ -1,0 +1,69 @@
+package services
+
+import (
+	"fmt"
+	"time"
+
+	"gymates/internal/models"
+
+	"gorm.io/gorm"
+)
+
+type BuddyService struct {
+	db *gorm.DB
+}
+
+func NewBuddyService(db *gorm.DB) *BuddyService {
+	return &BuddyService{
+		db: db,
+	}
+}
+
+// GetBuddyRecommendations 获取搭子推荐
+func (s *BuddyService) GetBuddyRecommendations(userID string) ([]models.User, error) {
+	var users []models.User
+	// 这里应该实现推荐算法，暂时返回所有用户
+	if err := s.db.Limit(10).Find(&users).Error; err != nil {
+		return nil, fmt.Errorf("获取搭子推荐失败: %w", err)
+	}
+	return users, nil
+}
+
+// CreateBuddyGroup 创建搭子组
+func (s *BuddyService) CreateBuddyGroup(userID uint, req *models.CreateBuddyGroupRequest) (*models.GymBuddyGroup, error) {
+	group := &models.GymBuddyGroup{
+		GroupName:       req.GroupName,
+		Goal:            req.Goal,
+		GymID:           req.GymID,
+		LeaderUserID:    userID,
+		MaxMembers:      req.MaxMembers,
+		DurationMinutes: req.DurationMinutes,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+
+	if err := s.db.Create(group).Error; err != nil {
+		return nil, fmt.Errorf("创建搭子组失败: %w", err)
+	}
+
+	return group, nil
+}
+
+// InviteBuddy 邀请搭子
+func (s *BuddyService) InviteBuddy(userID uint, req *models.InviteBuddyRequest) (*models.BuddyInvitation, error) {
+	invitation := &models.BuddyInvitation{
+		GroupID:    req.GroupID,
+		InviterUID: userID,
+		InviteeUID: req.InviteeUID,
+		Message:    req.Message,
+		Status:     "pending",
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	if err := s.db.Create(invitation).Error; err != nil {
+		return nil, fmt.Errorf("邀请搭子失败: %w", err)
+	}
+
+	return invitation, nil
+}

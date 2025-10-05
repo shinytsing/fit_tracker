@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"fittracker/internal/models"
-	"fittracker/internal/services"
+	"gymates/internal/models"
+	"gymates/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,11 +33,9 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	var req struct {
 		Content     string `json:"content" binding:"required"`
 		Images      string `json:"images"`
-		Videos      string `json:"videos"`
+		VideoURL    string `json:"video_url"`
 		Location    string `json:"location"`
-		WorkoutType string `json:"workout_type"`
-		Duration    int    `json:"duration"`
-		Calories    int    `json:"calories"`
+		WorkoutData string `json:"workout_data"`
 		IsPublic    bool   `json:"is_public"`
 	}
 
@@ -50,11 +48,9 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		UserID:      userID.(uint),
 		Content:     req.Content,
 		Images:      req.Images,
-		Videos:      req.Videos,
+		VideoURL:    req.VideoURL,
 		Location:    req.Location,
-		WorkoutType: req.WorkoutType,
-		Duration:    req.Duration,
-		Calories:    req.Calories,
+		WorkoutData: req.WorkoutData,
 		IsPublic:    req.IsPublic,
 	}
 
@@ -252,7 +248,7 @@ func (h *PostHandler) CreateComment(c *gin.Context) {
 		return
 	}
 
-	comment := &models.PostComment{
+	comment := &models.Comment{
 		UserID:   userID.(uint),
 		PostID:   uint(id),
 		Content:  req.Content,

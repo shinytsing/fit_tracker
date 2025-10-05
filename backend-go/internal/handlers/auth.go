@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"fittracker/internal/services"
+	"gymates/internal/services"
 
 	"github.com/gin-gonic/gin"
 )

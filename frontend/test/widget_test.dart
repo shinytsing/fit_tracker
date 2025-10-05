@@ -5,10 +5,10 @@ import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:dio/dio.dart';
 
-import 'package:fittracker/core/models/models.dart';
-import 'package:fittracker/core/services/api_services.dart';
-import 'package:fittracker/core/providers/providers.dart';
-import 'package:fittracker/features/auth/pages/login_page.dart';
+import 'package:gymates/core/models/models.dart';
+import 'package:gymates/core/services/api_services.dart';
+import 'package:gymates/core/providers/providers.dart';
+import 'package:gymates/features/auth/pages/login_page.dart';
 
 // 生成 Mock 类
 @GenerateMocks([AuthApiService, WorkoutApiService, CommunityApiService, CheckinApiService, NutritionApiService])

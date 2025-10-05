@@ -1,0 +1,318 @@
+package routes
+
+import (
+	"gymates/internal/middleware"
+	"gymates/internal/services"
+
+	"github.com/gin-gonic/gin"
+)
+
+// RouteHandler 路由处理器
+type RouteHandler struct {
+	services *services.Services
+}
+
+// NewRouteHandler 创建路由处理器
+func NewRouteHandler(services *services.Services) *RouteHandler {
+	return &RouteHandler{
+		services: services,
+	}
+}
+
+// SetupUserRoutes 设置用户相关路由
+func (h *RouteHandler) SetupUserRoutes(rg *gin.RouterGroup) {
+	users := rg.Group("/users")
+	{
+		// 公开路由
+		users.POST("/register", h.Register)
+		users.POST("/login", h.Login)
+		users.POST("/third-party-login", h.ThirdPartyLogin)
+		users.POST("/refresh", h.RefreshToken)
+		users.POST("/forgot-password", h.ForgotPassword)
+		users.POST("/reset-password", h.ResetPassword)
+
+		// 需要认证的路由
+		usersAuth := users.Group("")
+		usersAuth.Use(middleware.Auth(h.services.AuthService))
+		{
+			usersAuth.GET("/profile", h.GetProfile)
+			usersAuth.PUT("/profile", h.UpdateProfile)
+			usersAuth.POST("/avatar", h.UploadAvatar)
+			usersAuth.DELETE("/avatar", h.DeleteAvatar)
+			usersAuth.GET("/settings", h.GetSettings)
+			usersAuth.PUT("/settings", h.UpdateSettings)
+			usersAuth.POST("/logout", h.Logout)
+
+			// 个人资料相关路由
+			usersAuth.POST("/profile/data", h.CreateUserProfile)
+			usersAuth.GET("/profile/data", h.GetUserProfile)
+			usersAuth.PUT("/profile/data", h.UpdateUserProfile)
+			usersAuth.DELETE("/profile/data", h.DeleteUserProfile)
+			usersAuth.GET("/profile/data/exists", h.CheckUserProfileExists)
+		}
+	}
+}
+
+// SetupTrainingRoutes 设置训练相关路由
+func (h *RouteHandler) SetupTrainingRoutes(rg *gin.RouterGroup) {
+	training := rg.Group("/training")
+	training.Use(middleware.Auth(h.services.AuthService))
+	{
+		// 训练计划
+		training.GET("/plans/today", h.GetTodayPlan)
+		training.GET("/plans/history", h.GetHistoryPlans)
+		training.POST("/plans", h.CreatePlan)
+		training.PUT("/plans/:id", h.UpdatePlan)
+		training.DELETE("/plans/:id", h.DeletePlan)
+		training.POST("/plans/ai-generate", h.GenerateAIPlan)
+
+		// AI训练推荐
+		training.POST("/ai-recommend", h.AIRecommendTraining)
+
+		// 训练执行
+		training.POST("/workouts/start", h.StartWorkout)
+		training.POST("/workouts/:id/complete", h.CompleteWorkout)
+		training.POST("/exercises/:id/complete", h.CompleteExercise)
+		training.GET("/workouts/active", h.GetActiveWorkout)
+
+		// 训练统计
+		training.GET("/stats", h.GetTrainingStats)
+		training.GET("/stats/weekly", h.GetWeeklyStats)
+		training.GET("/stats/monthly", h.GetMonthlyStats)
+
+		// 成就系统
+		training.GET("/achievements", h.GetAchievements)
+		training.POST("/achievements/:id/claim", h.ClaimAchievement)
+
+		// 签到系统
+		training.GET("/checkins", h.GetCheckIns)
+		training.POST("/checkins", h.CreateCheckIn)
+		training.GET("/checkins/streak", h.GetCheckInStreak)
+	}
+}
+
+// SetupCommunityRoutes 设置社区相关路由
+func (h *RouteHandler) SetupCommunityRoutes(rg *gin.RouterGroup) {
+	posts := rg.Group("/posts")
+	posts.Use(middleware.Auth(h.services.AuthService))
+	{
+		// 帖子管理
+		posts.GET("/following", h.GetFollowingPosts)
+		posts.GET("/recommend", h.GetRecommendPosts)
+		posts.GET("/trending", h.GetTrendingPosts)
+		posts.POST("", h.CreatePost)
+		posts.GET("/:id", h.GetPost)
+		posts.PUT("/:id", h.UpdatePost)
+		posts.DELETE("/:id", h.DeletePost)
+
+		// 帖子互动
+		posts.POST("/:id/like", h.LikePost)
+		posts.DELETE("/:id/like", h.UnlikePost)
+		posts.POST("/:id/comment", h.CommentPost)
+		posts.GET("/:id/comments", h.GetPostComments)
+		posts.POST("/:id/share", h.SharePost)
+		posts.POST("/:id/favorite", h.FavoritePost)
+		posts.DELETE("/:id/favorite", h.UnfavoritePost)
+
+		// 话题相关
+		posts.GET("/topics/trending", h.GetTrendingTopics)
+		posts.GET("/topics/:topic", h.GetPostsByTopic)
+
+		// 用户关系
+		posts.POST("/users/:id/follow", h.FollowUser)
+		posts.DELETE("/users/:id/follow", h.UnfollowUser)
+		posts.GET("/users/:id/followers", h.GetUserFollowers)
+		posts.GET("/users/:id/following", h.GetUserFollowing)
+	}
+}
+
+// SetupMessageRoutes 设置消息相关路由
+func (h *RouteHandler) SetupMessageRoutes(rg *gin.RouterGroup) {
+	messages := rg.Group("/messages")
+	messages.Use(middleware.Auth(h.services.AuthService))
+	{
+		// 聊天管理
+		messages.GET("/chats", h.GetChats)
+		messages.POST("/chats", h.CreateChat)
+		messages.GET("/chats/:id", h.GetChat)
+		messages.PUT("/chats/:id", h.UpdateChat)
+		messages.DELETE("/chats/:id", h.DeleteChat)
+
+		// 消息管理
+		messages.GET("/chats/:id/messages", h.GetChatMessages)
+		messages.POST("/chats/:id/messages", h.SendMessage)
+		messages.PUT("/messages/:id", h.UpdateMessage)
+		messages.DELETE("/messages/:id", h.DeleteMessage)
+		messages.POST("/messages/:id/read", h.MarkMessageRead)
+
+		// 媒体上传
+		messages.POST("/media/upload", h.UploadMedia)
+		messages.POST("/video/upload", h.UploadVideo)
+
+		// 视频通话
+		messages.POST("/video-call/start", h.StartVideoCall)
+		messages.POST("/video-call/:id/accept", h.AcceptVideoCall)
+		messages.POST("/video-call/:id/reject", h.RejectVideoCall)
+		messages.POST("/video-call/:id/end", h.EndVideoCall)
+		messages.GET("/video-call/history", h.GetVideoCallHistory)
+
+		// 视频消息
+		messages.POST("/video-message/send", h.SendVideoMessage)
+		messages.GET("/video-messages", h.GetVideoMessages)
+		messages.PUT("/video-messages/:id/status", h.UpdateVideoMessageStatus)
+
+		// 通知管理
+		messages.GET("/notifications", h.GetNotifications)
+		messages.PUT("/notifications/:id/read", h.MarkNotificationRead)
+		messages.DELETE("/notifications", h.ClearNotifications)
+		messages.GET("/notifications/unread-count", h.GetUnreadNotificationCount)
+
+		// 系统消息
+		messages.GET("/system", h.GetSystemMessages)
+	}
+}
+
+// SetupGymRoutes 设置健身房相关路由
+func (h *RouteHandler) SetupGymRoutes(rg *gin.RouterGroup) {
+	gyms := rg.Group("/gyms")
+	{
+		// 公开路由
+		gyms.GET("", h.GetGyms)
+		gyms.GET("/:id", h.GetGymByID)
+		gyms.GET("/nearby", h.GetNearbyGyms)
+		gyms.GET("/search", h.SearchGyms)
+
+		// 需要认证的路由
+		gymsAuth := gyms.Group("")
+		gymsAuth.Use(middleware.Auth(h.services.AuthService))
+		{
+			// 健身房管理
+			gymsAuth.POST("", h.CreateGym)
+			gymsAuth.PUT("/:id", h.UpdateGym)
+			gymsAuth.DELETE("/:id", h.DeleteGym)
+
+			// 搭子申请
+			gymsAuth.POST("/:id/join", h.JoinGym)
+			gymsAuth.POST("/:id/join/accept", h.AcceptJoinRequest)
+			gymsAuth.POST("/:id/join/reject/:request_id", h.RejectJoinRequest)
+			gymsAuth.DELETE("/:id/join", h.CancelJoinRequest)
+			gymsAuth.GET("/:id/join-requests", h.GetJoinRequests)
+
+			// 折扣管理
+			gymsAuth.POST("/:id/discounts", h.CreateGymDiscount)
+			gymsAuth.GET("/:id/discounts", h.GetGymDiscounts)
+			gymsAuth.PUT("/discounts/:id", h.UpdateGymDiscount)
+			gymsAuth.DELETE("/discounts/:id", h.DeleteGymDiscount)
+
+			// 评价系统
+			gymsAuth.POST("/:id/reviews", h.CreateGymReview)
+			gymsAuth.GET("/:id/reviews", h.GetGymReviews)
+			gymsAuth.PUT("/reviews/:id", h.UpdateGymReview)
+			gymsAuth.DELETE("/reviews/:id", h.DeleteGymReview)
+		}
+	}
+}
+
+// SetupBuddyRoutes 设置搭子相关路由
+func (h *RouteHandler) SetupBuddyRoutes(rg *gin.RouterGroup) {
+	buddies := rg.Group("/buddies")
+	buddies.Use(middleware.Auth(h.services.AuthService))
+	{
+		// 搭子组管理
+		buddies.GET("/groups", h.GetBuddyGroups)
+		buddies.POST("/groups", h.CreateBuddyGroup)
+		buddies.GET("/groups/:id", h.GetBuddyGroup)
+		buddies.PUT("/groups/:id", h.UpdateBuddyGroup)
+		buddies.DELETE("/groups/:id", h.DeleteBuddyGroup)
+
+		// 搭子组成员
+		buddies.POST("/groups/:id/join", h.JoinBuddyGroup)
+		buddies.DELETE("/groups/:id/leave", h.LeaveBuddyGroup)
+		buddies.POST("/groups/:id/members/:user_id/kick", h.KickBuddyGroupMember)
+		buddies.GET("/groups/:id/members", h.GetBuddyGroupMembers)
+
+		// 搭子匹配
+		buddies.GET("/recommendations", h.GetBuddyRecommendations)
+		buddies.POST("/invite", h.InviteBuddy)
+		buddies.GET("/invitations", h.GetBuddyInvitations)
+		buddies.POST("/invitations/:id/accept", h.AcceptBuddyInvitation)
+		buddies.POST("/invitations/:id/reject", h.RejectBuddyInvitation)
+
+		// 搭子活动
+		buddies.GET("/activities", h.GetBuddyActivities)
+		buddies.POST("/activities", h.CreateBuddyActivity)
+		buddies.GET("/activities/:id", h.GetBuddyActivity)
+		buddies.PUT("/activities/:id", h.UpdateBuddyActivity)
+		buddies.DELETE("/activities/:id", h.DeleteBuddyActivity)
+	}
+}
+
+// SetupStatsRoutes 设置统计相关路由
+func (h *RouteHandler) SetupStatsRoutes(rg *gin.RouterGroup) {
+	stats := rg.Group("/stats")
+	stats.Use(middleware.Auth(h.services.AuthService))
+	{
+		// 个人统计
+		stats.GET("/personal", h.GetPersonalStats)
+		stats.GET("/personal/weekly", h.GetWeeklyPersonalStats)
+		stats.GET("/personal/monthly", h.GetMonthlyPersonalStats)
+		stats.GET("/personal/yearly", h.GetYearlyPersonalStats)
+
+		// 训练统计
+		stats.GET("/training", h.GetTrainingStats)
+		stats.GET("/training/calories", h.GetCaloriesStats)
+		stats.GET("/training/duration", h.GetDurationStats)
+		stats.GET("/training/streak", h.GetStreakStats)
+
+		// 社交统计
+		stats.GET("/social", h.GetSocialStats)
+		stats.GET("/social/followers", h.GetFollowersStats)
+		stats.GET("/social/posts", h.GetPostsStats)
+		stats.GET("/social/interactions", h.GetInteractionsStats)
+
+		// 成就统计
+		stats.GET("/achievements", h.GetAchievementsStats)
+		stats.GET("/achievements/progress", h.GetAchievementsProgress)
+
+		// 排行榜
+		stats.GET("/leaderboard", h.GetLeaderboard)
+		stats.GET("/leaderboard/weekly", h.GetWeeklyLeaderboard)
+		stats.GET("/leaderboard/monthly", h.GetMonthlyLeaderboard)
+	}
+}
+
+// SetupAIRoutes 设置AI相关路由 (转发到FastAPI)
+func (h *RouteHandler) SetupAIRoutes(rg *gin.RouterGroup) {
+	ai := rg.Group("/ai")
+	ai.Use(middleware.Auth(h.services.AuthService))
+	{
+		// 训练计划生成
+		ai.POST("/training-plan", h.GenerateTrainingPlan)
+		ai.POST("/training-plan/custom", h.GenerateCustomTrainingPlan)
+		ai.POST("/training-plan/optimize", h.OptimizeTrainingPlan)
+
+		// 营养计划生成
+		ai.POST("/nutrition-plan", h.GenerateNutritionPlan)
+		ai.POST("/nutrition-plan/custom", h.GenerateCustomNutritionPlan)
+		ai.POST("/nutrition-plan/analyze", h.AnalyzeNutrition)
+
+		// AI聊天助手
+		ai.POST("/chat", h.AIChat)
+		ai.POST("/chat/history", h.GetAIChatHistory)
+		ai.DELETE("/chat/history", h.ClearAIChatHistory)
+
+		// 动作分析
+		ai.POST("/exercise/analyze", h.AnalyzeExercise)
+		ai.POST("/form/check", h.CheckExerciseForm)
+		ai.POST("/workout/analyze", h.AnalyzeWorkout)
+
+		// 健康建议
+		ai.POST("/health/advice", h.GetHealthAdvice)
+		ai.POST("/recovery/plan", h.GenerateRecoveryPlan)
+		ai.POST("/injury/prevention", h.GetInjuryPreventionTips)
+
+		// AI代理路由 - 转发所有其他请求到FastAPI
+		// 注意：通配符路由必须在所有具体路由之后
+		// ai.Any("/*path", h.AIProxy)
+	}
+}

@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"fittracker/internal/api/middleware"
-	"fittracker/internal/domain/models"
+	"gymates/internal/api/middleware"
+	"gymates/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -26,8 +26,20 @@ type RegisterRequest struct {
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
+	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+// ThirdPartyLoginRequest 第三方登录请求
+type ThirdPartyLoginRequest struct {
+	Provider      string                 `json:"provider" binding:"required"` // apple, wechat, sms, one_click
+	UserID        string                 `json:"userId,omitempty"`            // 第三方用户ID
+	Email         string                 `json:"email,omitempty"`             // 邮箱
+	PhoneNumber   string                 `json:"phoneNumber,omitempty"`       // 手机号
+	FullName      string                 `json:"fullName,omitempty"`          // 全名
+	IdentityToken string                 `json:"identityToken,omitempty"`     // 身份令牌
+	AuthCode      string                 `json:"authCode,omitempty"`          // 授权码
+	DeviceInfo    map[string]interface{} `json:"deviceInfo,omitempty"`        // 设备信息
 }
 
 // AuthResponse 认证响应
@@ -74,8 +86,7 @@ func (h *Handlers) Register(c *gin.Context) {
 		Username:     req.Username,
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
-		FirstName:    req.FirstName,
-		LastName:     req.LastName,
+		Nickname:     req.Username,
 	}
 
 	if err := h.DB.Create(user).Error; err != nil {
@@ -87,7 +98,7 @@ func (h *Handlers) Register(c *gin.Context) {
 	}
 
 	// 生成Token
-	token, err := middleware.GenerateToken(user.ID, user.Email)
+	token, err := middleware.GenerateToken(fmt.Sprintf("%d", user.UID), user.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Token生成失败",
@@ -98,7 +109,7 @@ func (h *Handlers) Register(c *gin.Context) {
 
 	// 存储Token到Redis
 	if h.Cache != nil {
-		h.Cache.SetUserToken(token, user.ID)
+		h.Cache.SetUserToken(token, user.UID)
 	}
 
 	// 清除密码哈希
@@ -126,12 +137,12 @@ func (h *Handlers) Login(c *gin.Context) {
 		return
 	}
 
-	// 查找用户
+	// 查找用户 - 支持用户名、邮箱或手机号登录
 	var user models.User
-	if err := h.DB.Where("email = ?", req.Email).First(&user).Error; err != nil {
+	if err := h.DB.Where("username = ? OR email = ? OR phone = ?", req.Username, req.Username, req.Username).First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": "邮箱或密码错误",
+				"error": "用户名或密码错误",
 				"code":  "INVALID_CREDENTIALS",
 			})
 			return
@@ -146,14 +157,14 @@ func (h *Handlers) Login(c *gin.Context) {
 	// 验证密码
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "邮箱或密码错误",
+			"error": "用户名或密码错误",
 			"code":  "INVALID_CREDENTIALS",
 		})
 		return
 	}
 
 	// 生成Token
-	token, err := middleware.GenerateToken(user.ID, user.Email)
+	token, err := middleware.GenerateToken(fmt.Sprintf("%d", user.UID), user.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Token生成失败",
@@ -164,7 +175,342 @@ func (h *Handlers) Login(c *gin.Context) {
 
 	// 存储Token到Redis
 	if h.Cache != nil {
-		h.Cache.SetUserToken(token, user.ID)
+		h.Cache.SetUserToken(token, user.UID)
+	}
+
+	// 清除密码哈希
+	user.PasswordHash = ""
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "登录成功",
+		"data": AuthResponse{
+			Token:     token,
+			User:      &user,
+			ExpiresAt: time.Now().Add(24 * time.Hour),
+		},
+	})
+}
+
+// ThirdPartyLogin 第三方登录
+func (h *Handlers) ThirdPartyLogin(c *gin.Context) {
+	var req ThirdPartyLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "请求参数错误",
+			"code":  "INVALID_REQUEST",
+		})
+		return
+	}
+
+	// 根据不同的第三方登录方式处理
+	switch req.Provider {
+	case "apple":
+		h.handleAppleLogin(c, req)
+	case "wechat":
+		h.handleWeChatLogin(c, req)
+	case "sms":
+		h.handleSMSLogin(c, req)
+	case "one_click":
+		h.handleOneClickLogin(c, req)
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "不支持的登录方式",
+			"code":  "UNSUPPORTED_PROVIDER",
+		})
+	}
+}
+
+// handleAppleLogin 处理苹果登录
+func (h *Handlers) handleAppleLogin(c *gin.Context, req ThirdPartyLoginRequest) {
+	// 验证苹果身份令牌（这里简化处理，实际项目中需要验证JWT）
+	if req.IdentityToken == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "苹果身份令牌无效",
+			"code":  "INVALID_APPLE_TOKEN",
+		})
+		return
+	}
+
+	// 查找或创建用户
+	var user models.User
+	var err error
+
+	if req.UserID != "" {
+		// 通过苹果用户ID查找用户
+		err = h.DB.Where("apple_id = ?", req.UserID).First(&user).Error
+	} else if req.Email != "" {
+		// 通过邮箱查找用户
+		err = h.DB.Where("email = ?", req.Email).First(&user).Error
+	}
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// 用户不存在，创建新用户
+			user = models.User{
+				Username:  req.Email, // 使用邮箱作为用户名
+				Email:     req.Email,
+				Nickname:  req.FullName,
+				AppleID:   req.UserID,
+				IsActive:  true,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+
+			if err := h.DB.Create(&user).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "创建用户失败",
+					"code":  "USER_CREATION_FAILED",
+				})
+				return
+			}
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "查询用户失败",
+				"code":  "USER_QUERY_FAILED",
+			})
+			return
+		}
+	}
+
+	// 更新苹果ID（如果还没有）
+	if user.AppleID == "" && req.UserID != "" {
+		user.AppleID = req.UserID
+		h.DB.Save(&user)
+	}
+
+	// 生成JWT token
+	token, err := middleware.GenerateToken(fmt.Sprintf("%d", user.UID), user.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "生成token失败",
+			"code":  "TOKEN_GENERATION_FAILED",
+		})
+		return
+	}
+
+	// 缓存token
+	if h.Cache != nil {
+		h.Cache.SetUserToken(token, user.UID)
+	}
+
+	// 清除密码哈希
+	user.PasswordHash = ""
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "登录成功",
+		"data": AuthResponse{
+			Token:     token,
+			User:      &user,
+			ExpiresAt: time.Now().Add(24 * time.Hour),
+		},
+	})
+}
+
+// handleWeChatLogin 处理微信登录
+func (h *Handlers) handleWeChatLogin(c *gin.Context, req ThirdPartyLoginRequest) {
+	// 验证微信授权码（这里简化处理，实际项目中需要调用微信API验证）
+	if req.AuthCode == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "微信授权码无效",
+			"code":  "INVALID_WECHAT_CODE",
+		})
+		return
+	}
+
+	// 查找或创建用户
+	var user models.User
+	var err error
+
+	// 通过微信授权码查找用户（这里简化处理）
+	err = h.DB.Where("wechat_openid = ?", req.AuthCode).First(&user).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// 用户不存在，创建新用户
+			user = models.User{
+				Username:     fmt.Sprintf("wechat_%s", req.AuthCode[:8]), // 生成用户名
+				Nickname:     "微信用户",
+				WeChatOpenID: req.AuthCode,
+				IsActive:     true,
+				CreatedAt:    time.Now(),
+				UpdatedAt:    time.Now(),
+			}
+
+			if err := h.DB.Create(&user).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "创建用户失败",
+					"code":  "USER_CREATION_FAILED",
+				})
+				return
+			}
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "查询用户失败",
+				"code":  "USER_QUERY_FAILED",
+			})
+			return
+		}
+	}
+
+	// 生成JWT token
+	token, err := middleware.GenerateToken(fmt.Sprintf("%d", user.UID), user.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "生成token失败",
+			"code":  "TOKEN_GENERATION_FAILED",
+		})
+		return
+	}
+
+	// 缓存token
+	if h.Cache != nil {
+		h.Cache.SetUserToken(token, user.UID)
+	}
+
+	// 清除密码哈希
+	user.PasswordHash = ""
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "登录成功",
+		"data": AuthResponse{
+			Token:     token,
+			User:      &user,
+			ExpiresAt: time.Now().Add(24 * time.Hour),
+		},
+	})
+}
+
+// handleSMSLogin 处理短信验证码登录
+func (h *Handlers) handleSMSLogin(c *gin.Context, req ThirdPartyLoginRequest) {
+	// 验证手机号
+	if req.PhoneNumber == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "手机号不能为空",
+			"code":  "PHONE_NUMBER_REQUIRED",
+		})
+		return
+	}
+
+	// 查找或创建用户
+	var user models.User
+	var err error
+
+	err = h.DB.Where("phone = ?", req.PhoneNumber).First(&user).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// 用户不存在，创建新用户
+			user = models.User{
+				Username:  req.PhoneNumber, // 使用手机号作为用户名
+				Phone:     req.PhoneNumber,
+				Nickname:  fmt.Sprintf("用户%s", req.PhoneNumber[len(req.PhoneNumber)-4:]),
+				IsActive:  true,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+
+			if err := h.DB.Create(&user).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "创建用户失败",
+					"code":  "USER_CREATION_FAILED",
+				})
+				return
+			}
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "查询用户失败",
+				"code":  "USER_QUERY_FAILED",
+			})
+			return
+		}
+	}
+
+	// 生成JWT token
+	token, err := middleware.GenerateToken(fmt.Sprintf("%d", user.UID), user.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "生成token失败",
+			"code":  "TOKEN_GENERATION_FAILED",
+		})
+		return
+	}
+
+	// 缓存token
+	if h.Cache != nil {
+		h.Cache.SetUserToken(token, user.UID)
+	}
+
+	// 清除密码哈希
+	user.PasswordHash = ""
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "登录成功",
+		"data": AuthResponse{
+			Token:     token,
+			User:      &user,
+			ExpiresAt: time.Now().Add(24 * time.Hour),
+		},
+	})
+}
+
+// handleOneClickLogin 处理一键登录
+func (h *Handlers) handleOneClickLogin(c *gin.Context, req ThirdPartyLoginRequest) {
+	// 验证手机号
+	if req.PhoneNumber == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "手机号不能为空",
+			"code":  "PHONE_NUMBER_REQUIRED",
+		})
+		return
+	}
+
+	// 查找或创建用户
+	var user models.User
+	var err error
+
+	err = h.DB.Where("phone = ?", req.PhoneNumber).First(&user).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// 用户不存在，创建新用户
+			user = models.User{
+				Username:  req.PhoneNumber, // 使用手机号作为用户名
+				Phone:     req.PhoneNumber,
+				Nickname:  fmt.Sprintf("用户%s", req.PhoneNumber[len(req.PhoneNumber)-4:]),
+				IsActive:  true,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+
+			if err := h.DB.Create(&user).Error; err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "创建用户失败",
+					"code":  "USER_CREATION_FAILED",
+				})
+				return
+			}
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "查询用户失败",
+				"code":  "USER_QUERY_FAILED",
+			})
+			return
+		}
+	}
+
+	// 生成JWT token
+	token, err := middleware.GenerateToken(fmt.Sprintf("%d", user.UID), user.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "生成token失败",
+			"code":  "TOKEN_GENERATION_FAILED",
+		})
+		return
+	}
+
+	// 缓存token
+	if h.Cache != nil {
+		h.Cache.SetUserToken(token, user.UID)
 	}
 
 	// 清除密码哈希
@@ -227,7 +573,7 @@ func (h *Handlers) RefreshToken(c *gin.Context) {
 	}
 
 	// 生成新Token
-	token, err := middleware.GenerateToken(user.ID, user.Email)
+	token, err := middleware.GenerateToken(fmt.Sprintf("%d", user.UID), user.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Token生成失败",
@@ -238,7 +584,7 @@ func (h *Handlers) RefreshToken(c *gin.Context) {
 
 	// 存储新Token到Redis
 	if h.Cache != nil {
-		h.Cache.SetUserToken(token, user.ID)
+		h.Cache.SetUserToken(token, user.UID)
 	}
 
 	// 清除密码哈希
@@ -444,11 +790,9 @@ func (h *Handlers) GetUserStats(c *gin.Context) {
 	h.DB.Model(&models.Follow{}).Where("follower_id = ?", userID).Count(&followingCount)
 
 	stats = models.UserStats{
-		UserID:         userID.(uint),
+		UserID:         uint64(userID.(uint)),
 		TotalWorkouts:  int(totalWorkouts),
 		TotalCheckins:  int(totalCheckins),
-		TotalCalories:  int(totalCalories),
-		AverageRating:  avgRating,
 		FollowersCount: int(followersCount),
 		FollowingCount: int(followingCount),
 	}

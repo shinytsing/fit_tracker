@@ -36,13 +36,29 @@ async def register(
 
 @router.post("/login", response_model=Token)
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    user_data: UserLogin,
     db: Session = Depends(get_db)
 ):
     """用户登录"""
     try:
         auth_service = AuthService(db)
-        token = auth_service.authenticate_user(form_data.username, form_data.password)
+        token = auth_service.authenticate_user(user_data.username, user_data.password)
+        return token
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"登录失败: {str(e)}"
+        )
+
+@router.post("/login-json", response_model=Token)
+async def login_json(
+    user_data: UserLogin,
+    db: Session = Depends(get_db)
+):
+    """用户登录 (JSON格式)"""
+    try:
+        auth_service = AuthService(db)
+        token = auth_service.authenticate_user(user_data.username, user_data.password)
         return token
     except Exception as e:
         raise HTTPException(

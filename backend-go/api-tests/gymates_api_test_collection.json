@@ -1,0 +1,1257 @@
+{
+  "info": {
+    "name": "Gymates API 测试集合",
+    "description": "Gymates健身搭子应用完整API测试集合",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "gymId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "postId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "chatId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "🔐 用户认证模块",
+      "item": [
+        {
+          "name": "用户注册",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"13800138000\",\n  \"password\": \"password123\",\n  \"verification_code\": \"123456\",\n  \"nickname\": \"健身达人\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('响应包含token', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.token).to.exist;",
+                  "    pm.collectionVariables.set('token', jsonData.data.token);",
+                  "    pm.collectionVariables.set('userId', jsonData.data.user.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "用户登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"13800138000\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含token', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.token).to.exist;",
+                  "    pm.collectionVariables.set('token', jsonData.token);",
+                  "    pm.collectionVariables.set('userId', jsonData.user.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "获取用户资料",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含用户信息', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user).to.exist;",
+                  "    pm.expect(jsonData.user.id).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "更新用户资料",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nickname\": \"新昵称\",\n  \"bio\": \"健身爱好者\",\n  \"avatar\": \"https://example.com/avatar.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "profile"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('用户信息已更新', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user.nickname).to.eql('新昵称');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "上传头像",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "src": "/path/to/avatar.jpg"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/avatar",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "avatar"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏋️ 训练模块",
+      "item": [
+        {
+          "name": "获取训练计划列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/training/plans?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["training", "plans"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含计划列表', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.plans).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "创建训练计划",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"减脂训练计划\",\n  \"description\": \"适合初学者的减脂计划\",\n  \"type\": \"custom\",\n  \"duration\": 30,\n  \"frequency\": 3,\n  \"difficulty\": \"beginner\",\n  \"goals\": [\"减脂\", \"塑形\"],\n  \"exercises\": [\"深蹲\", \"俯卧撑\", \"平板支撑\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/training/plans",
+              "host": ["{{baseUrl}}"],
+              "path": ["training", "plans"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('计划创建成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.name).to.eql('减脂训练计划');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI生成训练计划",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goal\": \"减脂\",\n  \"duration\": 30,\n  \"difficulty\": \"beginner\",\n  \"muscle_groups\": [\"全身\"],\n  \"available_time\": 60,\n  \"equipment\": [\"哑铃\", \"瑜伽垫\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/training-plan",
+              "host": ["{{baseUrl}}"],
+              "path": ["ai", "training-plan"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('AI生成计划成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "👥 社区模块",
+      "item": [
+        {
+          "name": "发布动态",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"今天完成了30分钟有氧运动！\",\n  \"images\": [\"https://example.com/image1.jpg\"],\n  \"type\": \"workout\",\n  \"is_public\": true,\n  \"tags\": [\"有氧\", \"健身\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('动态发布成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.id).to.exist;",
+                  "    pm.collectionVariables.set('postId', jsonData.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "获取动态列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/posts?page=1&limit=20&type=recommend",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "type",
+                  "value": "recommend"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含动态列表', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.posts).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "点赞动态",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/posts/{{postId}}/like",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts", "{{postId}}", "like"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('点赞成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.is_liked).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "评论动态",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"很棒！继续加油！\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts/{{postId}}/comment",
+              "host": ["{{baseUrl}}"],
+              "path": ["posts", "{{postId}}", "comment"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('评论成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.content).to.eql('很棒！继续加油！');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🤝 搭子模块",
+      "item": [
+        {
+          "name": "获取搭子推荐",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/buddies/recommendations?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["buddies", "recommendations"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含推荐列表', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.recommendations).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "创建搭子组",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"朝阳健身房搭子组\",\n  \"description\": \"一起健身，互相监督\",\n  \"gym_id\": 1,\n  \"max_members\": 6,\n  \"workout_time\": \"19:00-21:00\",\n  \"workout_days\": [\"周一\", \"周三\", \"周五\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/buddies/groups",
+              "host": ["{{baseUrl}}"],
+              "path": ["buddies", "groups"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('搭子组创建成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.name).to.eql('朝阳健身房搭子组');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "邀请搭子",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buddy_id\": 2,\n  \"message\": \"你好，我想和你一起健身！\",\n  \"workout_preferences\": {\n    \"time\": \"晚上7-9点\",\n    \"location\": \"健身房\",\n    \"type\": \"力量训练\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/buddies/invite",
+              "host": ["{{baseUrl}}"],
+              "path": ["buddies", "invite"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('邀请发送成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.invitation_id).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "💬 消息模块",
+      "item": [
+        {
+          "name": "创建聊天",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 2,\n  \"initial_message\": \"你好，我想和你一起健身！\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/messages/chats",
+              "host": ["{{baseUrl}}"],
+              "path": ["messages", "chats"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('聊天创建成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.chat_id).to.exist;",
+                  "    pm.collectionVariables.set('chatId', jsonData.data.chat_id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "发送消息",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"text\",\n  \"content\": \"明天一起去健身房吧！\",\n  \"media_url\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/messages/chats/{{chatId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["messages", "chats", "{{chatId}}", "messages"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('消息发送成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.content).to.eql('明天一起去健身房吧！');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "获取聊天记录",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/messages/chats/{{chatId}}/messages?page=1&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["messages", "chats", "{{chatId}}", "messages"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含消息列表', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.messages).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "获取通知",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/messages/notifications?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["messages", "notifications"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含通知列表', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.notifications).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🏢 健身房模块",
+      "item": [
+        {
+          "name": "获取健身房列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gyms?page=1&limit=20&latitude=39.9042&longitude=116.4074&radius=5000",
+              "host": ["{{baseUrl}}"],
+              "path": ["gyms"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "latitude",
+                  "value": "39.9042"
+                },
+                {
+                  "key": "longitude",
+                  "value": "116.4074"
+                },
+                {
+                  "key": "radius",
+                  "value": "5000"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含健身房列表', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.gyms).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "创建健身房",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"朝阳健身房\",\n  \"address\": \"北京市朝阳区xxx路xxx号\",\n  \"latitude\": 39.9042,\n  \"longitude\": 116.4074,\n  \"phone\": \"010-12345678\",\n  \"description\": \"设备齐全的现代化健身房\",\n  \"facilities\": [\"器械区\", \"有氧区\", \"瑜伽室\"],\n  \"opening_hours\": \"06:00-22:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/gyms",
+              "host": ["{{baseUrl}}"],
+              "path": ["gyms"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('健身房创建成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.name).to.eql('朝阳健身房');",
+                  "    pm.collectionVariables.set('gymId', jsonData.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "申请加入健身房",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goal\": \"减脂塑形\",\n  \"time_slot\": \"19:00-21:00\",\n  \"message\": \"我想加入这个健身房的搭子组\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/gyms/{{gymId}}/join",
+              "host": ["{{baseUrl}}"],
+              "path": ["gyms", "{{gymId}}", "join"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('申请提交成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.request_id).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "获取搭子数量",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/gyms/{{gymId}}/buddies",
+              "host": ["{{baseUrl}}"],
+              "path": ["gyms", "{{gymId}}", "buddies"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含搭子信息', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.buddy_count).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "创建优惠策略",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"搭子优惠\",\n  \"description\": \"3人以上组团享受8折优惠\",\n  \"discount_type\": \"percentage\",\n  \"discount_value\": 20,\n  \"min_buddies\": 3,\n  \"max_buddies\": 6,\n  \"valid_from\": \"2024-01-01T00:00:00Z\",\n  \"valid_to\": \"2024-12-31T23:59:59Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/gyms/{{gymId}}/discounts",
+              "host": ["{{baseUrl}}"],
+              "path": ["gyms", "{{gymId}}", "discounts"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('优惠策略创建成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.name).to.eql('搭子优惠');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🤖 AI接口",
+      "item": [
+        {
+          "name": "AI生成训练计划",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goal\": \"增肌\",\n  \"duration\": 30,\n  \"difficulty\": \"intermediate\",\n  \"muscle_groups\": [\"胸肌\", \"背肌\"],\n  \"available_time\": 90,\n  \"equipment\": [\"杠铃\", \"哑铃\"],\n  \"preferences\": {\n    \"rest_days\": [\"周日\"],\n    \"workout_time\": \"晚上\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/training-plan",
+              "host": ["{{baseUrl}}"],
+              "path": ["ai", "training-plan"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('AI生成计划成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.plan).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AI聊天助手",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"如何正确做深蹲？\",\n  \"context\": {\n    \"user_level\": \"beginner\",\n    \"previous_messages\": []\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["ai", "chat"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('AI回复成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.response).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "动作分析",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"exercise_name\": \"深蹲\",\n  \"form_data\": {\n    \"knee_angle\": 90,\n    \"back_angle\": 45,\n    \"weight\": 50\n  },\n  \"video_url\": \"https://example.com/form_video.mp4\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ai/exercise/analyze",
+              "host": ["{{baseUrl}}"],
+              "path": ["ai", "exercise", "analyze"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('动作分析成功', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.analysis).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📊 统计模块",
+      "item": [
+        {
+          "name": "获取个人统计",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stats/personal?period=month",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats", "personal"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含统计数据', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.stats).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "获取训练统计",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stats/training?period=week&start_date=2024-01-01&end_date=2024-01-07",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats", "training"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "week"
+                },
+                {
+                  "key": "start_date",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2024-01-07"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含训练统计', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.training_stats).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "获取社交统计",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stats/social?period=month",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats", "social"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "month"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含社交统计', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.social_stats).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "获取排行榜",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stats/leaderboard?type=weekly&category=calories",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats", "leaderboard"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "weekly"
+                },
+                {
+                  "key": "category",
+                  "value": "calories"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('状态码为200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('响应包含排行榜', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.leaderboard).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

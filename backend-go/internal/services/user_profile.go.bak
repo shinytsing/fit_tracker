@@ -1,0 +1,146 @@
+package services
+
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	"gymates/internal/models"
+
+	"gorm.io/gorm"
+)
+
+type UserProfileService struct {
+	db *gorm.DB
+}
+
+func NewUserProfileService(db *gorm.DB) *UserProfileService {
+	return &UserProfileService{
+		db: db,
+	}
+}
+
+// CreateProfile 创建用户个人资料
+func (s *UserProfileService) CreateProfile(req *models.CreateUserProfileRequest, userID uint) (*models.UserProfile, error) {
+	// 检查用户是否已有个人资料
+	var existingProfile models.UserProfile
+	if err := s.db.Where("user_id = ?", userID).First(&existingProfile).Error; err == nil {
+		return nil, errors.New("用户个人资料已存在")
+	}
+
+	// 计算BMI
+	bmi := req.Weight / ((req.Height / 100) * (req.Height / 100))
+
+	// 创建个人资料
+	profile := &models.UserProfile{
+		UserID:        userID,
+		Height:        req.Height,
+		Weight:        req.Weight,
+		BMI:           bmi,
+		ExerciseYears: req.ExerciseYears,
+		FitnessGoal:   req.FitnessGoal,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+
+	if err := s.db.Create(profile).Error; err != nil {
+		return nil, fmt.Errorf("创建用户个人资料失败: %w", err)
+	}
+
+	return profile, nil
+}
+
+// GetProfile 获取用户个人资料
+func (s *UserProfileService) GetProfile(userID uint) (*models.UserProfile, error) {
+	var profile models.UserProfile
+	if err := s.db.Where("user_id = ?", userID).First(&profile).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("用户个人资料不存在")
+		}
+		return nil, fmt.Errorf("查询用户个人资料失败: %w", err)
+	}
+
+	return &profile, nil
+}
+
+// UpdateProfile 更新用户个人资料
+func (s *UserProfileService) UpdateProfile(req *models.UpdateUserProfileRequest, userID uint) (*models.UserProfile, error) {
+	var profile models.UserProfile
+	if err := s.db.Where("user_id = ?", userID).First(&profile).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("用户个人资料不存在")
+		}
+		return nil, fmt.Errorf("查询用户个人资料失败: %w", err)
+	}
+
+	// 更新字段
+	updateData := make(map[string]interface{})
+
+	if req.Height != nil {
+		updateData["height"] = *req.Height
+		profile.Height = *req.Height
+	}
+
+	if req.Weight != nil {
+		updateData["weight"] = *req.Weight
+		profile.Weight = *req.Weight
+	}
+
+	if req.ExerciseYears != nil {
+		updateData["exercise_years"] = *req.ExerciseYears
+		profile.ExerciseYears = *req.ExerciseYears
+	}
+
+	if req.FitnessGoal != nil {
+		updateData["fitness_goal"] = *req.FitnessGoal
+		profile.FitnessGoal = *req.FitnessGoal
+	}
+
+	// 如果身高或体重有更新，重新计算BMI
+	if req.Height != nil || req.Weight != nil {
+		bmi := profile.Weight / ((profile.Height / 100) * (profile.Height / 100))
+		updateData["bmi"] = bmi
+		profile.BMI = bmi
+	}
+
+	updateData["updated_at"] = time.Now()
+	profile.UpdatedAt = time.Now()
+
+	if err := s.db.Model(&profile).Updates(updateData).Error; err != nil {
+		return nil, fmt.Errorf("更新用户个人资料失败: %w", err)
+	}
+
+	return &profile, nil
+}
+
+// DeleteProfile 删除用户个人资料
+func (s *UserProfileService) DeleteProfile(userID uint) error {
+	if err := s.db.Where("user_id = ?", userID).Delete(&models.UserProfile{}).Error; err != nil {
+		return fmt.Errorf("删除用户个人资料失败: %w", err)
+	}
+
+	return nil
+}
+
+// CheckProfileExists 检查用户个人资料是否存在
+func (s *UserProfileService) CheckProfileExists(userID uint) (bool, error) {
+	var count int64
+	if err := s.db.Model(&models.UserProfile{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
+		return false, fmt.Errorf("检查用户个人资料失败: %w", err)
+	}
+
+	return count > 0, nil
+}
+
+// GetProfileWithUser 获取用户个人资料及用户信息
+func (s *UserProfileService) GetProfileWithUser(userID uint) (*models.UserProfile, error) {
+	var profile models.UserProfile
+	if err := s.db.Preload("User").Where("user_id = ?", userID).First(&profile).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("用户个人资料不存在")
+		}
+		return nil, fmt.Errorf("查询用户个人资料失败: %w", err)
+	}
+
+	return &profile, nil
+}

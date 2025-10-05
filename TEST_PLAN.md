@@ -1,934 +1,518 @@
-# FitTracker 全栈测试计划
+# FitTracker Flutter 应用测试计划
 
 ## 📋 测试概述
 
-### 测试目标
-- 确保所有核心功能模块正常工作
-- 验证前后端数据交互的一致性
-- 测试异常场景和边界条件
-- 达到85%以上的测试覆盖率
+本测试计划涵盖了 FitTracker Flutter 应用的所有核心功能，包括单元测试和集成测试，确保 API 调用正确、状态更新正确、UI 反馈正确。
 
-### 测试范围
-1. **前端测试**: Widget、页面、状态管理、路由
-2. **后端测试**: API、服务、数据库操作
-3. **集成测试**: 前后端交互、数据流
-4. **UI自动化测试**: 用户操作、动画效果
+## 🎯 测试目标
 
-## 🧪 测试用例设计
+- 验证所有 API 调用正确映射到对应的端点
+- 确保状态管理（Riverpod）正常工作
+- 验证 UI 交互与后端 API 的集成
+- 测试错误处理和用户反馈机制
+- 确保数据模型正确解析和转换
 
-### 1. 健身中心模块测试
+## 📱 核心功能测试
 
-#### 1.1 前端单元测试
+### 1. 认证流程测试
 
-**测试文件**: `frontend/test/features/workout/presentation/widgets/workout_plan_card_test.dart`
+#### 1.1 用户注册测试
+**测试文件**: `test/auth/register_test.dart`
 
+**测试用例**:
+- ✅ 成功注册新用户
+- ✅ 注册时邮箱格式验证
+- ✅ 注册时密码强度验证
+- ✅ 重复邮箱注册失败
+- ✅ 网络错误处理
+- ✅ 注册成功后自动登录
+
+**API 端点**: `POST /auth/register`
+
+**测试步骤**:
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mockito/mockito.dart';
+testWidgets('用户注册成功', (WidgetTester tester) async {
+  // 1. 模拟 API 响应
+  when(mockApiService.post('/auth/register', data: anyNamed('data')))
+      .thenAnswer((_) async => Response(
+        data: {
+          'data': {
+            'user': mockUserJson,
+            'token': 'mock_token',
+            'refresh_token': 'mock_refresh_token'
+          }
+        },
+        statusCode: 200,
+      ));
 
-import '../../../../lib/features/workout/data/models/workout_models.dart';
-import '../../../../lib/features/workout/presentation/widgets/workout_cards.dart';
+  // 2. 构建注册页面
+  await tester.pumpWidget(createTestWidget(RegisterPage()));
 
-void main() {
-  group('WorkoutPlanCard Widget Tests', () {
-    testWidgets('应该正确显示训练计划卡片', (WidgetTester tester) async {
-      // Arrange
-      final workoutPlan = WorkoutPlan(
-        id: '1',
-        name: '减脂训练计划',
-        type: '减脂',
-        difficulty: '中级',
-        duration: 45,
-        description: '适合中级用户的减脂训练计划',
-        exercises: [
-          Exercise(
-            name: '俯卧撑',
-            sets: 3,
-            reps: 15,
-            restTime: 60,
-            instructions: '保持身体挺直',
-          ),
-        ],
-        suggestions: '建议在训练前进行热身',
-        confidenceScore: 0.9,
-        aiPowered: true,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+  // 3. 填写注册表单
+  await tester.enterText(find.byKey(Key('email_field')), 'test@example.com');
+  await tester.enterText(find.byKey(Key('password_field')), 'password123');
+  await tester.enterText(find.byKey(Key('username_field')), 'testuser');
 
-      // Act
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: WorkoutPlanCard(
-              plan: workoutPlan,
-              onTap: () {},
-              onStart: () {},
-            ),
-          ),
-        ),
-      );
+  // 4. 点击注册按钮
+  await tester.tap(find.byKey(Key('register_button')));
+  await tester.pumpAndSettle();
 
-      // Assert
-      expect(find.text('减脂训练计划'), findsOneWidget);
-      expect(find.text('中级'), findsOneWidget);
-      expect(find.text('45分钟'), findsOneWidget);
-      expect(find.text('AI生成'), findsOneWidget);
-      expect(find.text('开始训练'), findsOneWidget);
-    });
-
-    testWidgets('点击开始训练按钮应该触发回调', (WidgetTester tester) async {
-      // Arrange
-      bool onStartCalled = false;
-      final workoutPlan = WorkoutPlan(
-        id: '1',
-        name: '测试计划',
-        type: '减脂',
-        difficulty: '初级',
-        duration: 30,
-        description: '测试描述',
-        exercises: [],
-        suggestions: '测试建议',
-        confidenceScore: 0.8,
-        aiPowered: false,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: WorkoutPlanCard(
-              plan: workoutPlan,
-              onTap: () {},
-              onStart: () {
-                onStartCalled = true;
-              },
-            ),
-          ),
-        ),
-      );
-
-      // Act
-      await tester.tap(find.text('开始训练'));
-      await tester.pumpAndSettle();
-
-      // Assert
-      expect(onStartCalled, isTrue);
-    });
-  });
-}
+  // 5. 验证结果
+  expect(find.text('注册成功'), findsOneWidget);
+  verify(mockApiService.post('/auth/register', data: anyNamed('data'))).called(1);
+});
 ```
 
-#### 1.2 后端单元测试
+#### 1.2 用户登录测试
+**测试文件**: `test/auth/login_test.dart`
 
-**测试文件**: `backend-go/internal/domain/services/workout_service_test.go`
+**测试用例**:
+- ✅ 成功登录
+- ✅ 错误密码登录失败
+- ✅ 不存在的用户登录失败
+- ✅ Token 自动保存
+- ✅ 登录后跳转到主页面
 
-```go
-package services
+**API 端点**: `POST /auth/login`
 
-import (
-	"testing"
-	"time"
+### 2. 训练功能测试
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+#### 2.1 训练打卡流程测试
+**测试文件**: `test/training/workout_test.dart`
 
-	"fittracker/backend/internal/domain/models"
-)
+**测试用例**:
+- ✅ 开始训练
+- ✅ 完成训练
+- ✅ 获取今日训练计划
+- ✅ 训练记录保存
+- ✅ 训练统计更新
 
-func TestWorkoutService_GenerateWorkoutPlan(t *testing.T) {
-	t.Run("生成AI训练计划成功", func(t *testing.T) {
-		// Arrange
-		mockRepo := new(MockWorkoutRepository)
-		mockAIService := new(MockAIService)
-		workoutService := NewWorkoutService(mockRepo, mockAIService)
+**API 端点**:
+- `POST /workouts/track` - 开始训练
+- `PUT /workouts/{id}/complete` - 完成训练
+- `GET /workouts/plans/today` - 获取今日计划
 
-		expectedPlan := &models.TrainingPlan{
-			Name:        "AI减脂训练计划",
-			Type:        "减脂",
-			Difficulty:  "中级",
-			Duration:    45,
-			Description: "AI生成的个性化减脂训练计划",
-			Exercises: []models.Exercise{
-				{
-					Name:         "俯卧撑",
-					Sets:         3,
-					Reps:         15,
-					RestTime:     60,
-					Instructions: "保持身体挺直，核心收紧",
-				},
-			},
-			Suggestions:      "建议在训练前进行5分钟热身",
-			ConfidenceScore:  0.95,
-			AIPowered:        true,
-		}
-
-		mockAIService.On("GenerateWorkoutPlan", "减脂", "中级", 45, []string{"哑铃"}, map[string]interface{}{}).Return(map[string]interface{}{
-			"name":             "AI减脂训练计划",
-			"type":             "减脂",
-			"difficulty":       "中级",
-			"duration":         45,
-			"description":      "AI生成的个性化减脂训练计划",
-			"exercises":        []interface{}{},
-			"suggestions":      "建议在训练前进行5分钟热身",
-			"confidence_score": 0.95,
-			"ai_powered":       true,
-		}, nil)
-
-		// Act
-		plan, err := workoutService.GenerateWorkoutPlan("减脂", "中级", 45, []string{"哑铃"}, map[string]interface{}{})
-
-		// Assert
-		assert.NoError(t, err)
-		assert.Equal(t, expectedPlan.Name, plan.Name)
-		assert.Equal(t, expectedPlan.Type, plan.Type)
-		assert.Equal(t, expectedPlan.Difficulty, plan.Difficulty)
-		assert.Equal(t, expectedPlan.Duration, plan.Duration)
-		assert.True(t, plan.AIPowered)
-		mockAIService.AssertExpectations(t)
-	})
-
-	t.Run("AI服务失败时使用备用方案", func(t *testing.T) {
-		// Arrange
-		mockRepo := new(MockWorkoutRepository)
-		mockAIService := new(MockAIService)
-		workoutService := NewWorkoutService(mockRepo, mockAIService)
-
-		mockAIService.On("GenerateWorkoutPlan", "减脂", "中级", 45, []string{"哑铃"}, map[string]interface{}{}).Return(nil, errors.New("AI服务不可用"))
-
-		// Act
-		plan, err := workoutService.GenerateWorkoutPlan("减脂", "中级", 45, []string{"哑铃"}, map[string]interface{}{})
-
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, plan)
-		assert.Equal(t, "减脂", plan.Type)
-		assert.Equal(t, "中级", plan.Difficulty)
-		assert.False(t, plan.AIPowered)
-		mockAIService.AssertExpectations(t)
-	})
-}
-```
-
-### 2. BMI计算器模块测试
-
-#### 2.1 前端集成测试
-
-**测试文件**: `frontend/test/features/bmi/presentation/pages/bmi_calculator_integration_test.dart`
-
+**测试步骤**:
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mockito/mockito.dart';
+testWidgets('开始训练流程', (WidgetTester tester) async {
+  // 1. 模拟获取今日训练计划
+  when(mockApiService.get('/workouts/plans/today'))
+      .thenAnswer((_) async => Response(
+        data: {'data': mockTodayPlanJson},
+        statusCode: 200,
+      ));
 
-import '../../../../lib/features/bmi/data/models/bmi_models.dart';
-import '../../../../lib/features/bmi/data/repositories/bmi_repository.dart';
-import '../../../../lib/features/bmi/presentation/pages/bmi_page.dart';
+  // 2. 模拟开始训练
+  when(mockApiService.post('/workouts/track', data: anyNamed('data')))
+      .thenAnswer((_) async => Response(
+        data: {'data': mockWorkoutJson},
+        statusCode: 201,
+      ));
 
-void main() {
-  group('BMI Calculator Integration Tests', () {
-    late MockBMIRepository mockRepository;
-    late ProviderContainer container;
+  // 3. 构建训练页面
+  await tester.pumpWidget(createTestWidget(TrainingPage()));
 
-    setUp(() {
-      mockRepository = MockBMIRepository();
-      container = ProviderContainer(
-        overrides: [
-          bmiRepositoryProvider.overrideWithValue(mockRepository),
-        ],
-      );
-    });
+  // 4. 等待今日计划加载
+  await tester.pumpAndSettle();
 
-    tearDown(() {
-      container.dispose();
-    });
+  // 5. 点击开始训练按钮
+  await tester.tap(find.text('开始训练'));
+  await tester.pumpAndSettle();
 
-    testWidgets('完整的BMI计算流程测试', (WidgetTester tester) async {
-      // Arrange
-      final mockBMIRecord = BMIRecord(
-        id: '1',
-        userId: 'user1',
-        height: 175.0,
-        weight: 70.0,
-        bmi: 22.86,
-        category: '正常',
-        date: DateTime.now(),
-        notes: '测试记录',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      when(mockRepository.calculateBMI(any, any))
-          .thenAnswer((_) async => Result.success(mockBMIRecord));
-
-      // Act
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            bmiRepositoryProvider.overrideWithValue(mockRepository),
-          ],
-          child: MaterialApp(
-            home: BMIPage(),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // 输入身高
-      await tester.enterText(find.byType(TextField).first, '175');
-      await tester.pumpAndSettle();
-
-      // 输入体重
-      await tester.enterText(find.byType(TextField).last, '70');
-      await tester.pumpAndSettle();
-
-      // 点击计算按钮
-      await tester.tap(find.text('计算BMI'));
-      await tester.pumpAndSettle();
-
-      // Assert
-      expect(find.text('22.86'), findsOneWidget);
-      expect(find.text('正常'), findsOneWidget);
-      expect(find.text('健康'), findsOneWidget);
-      verify(mockRepository.calculateBMI(175.0, 70.0)).called(1);
-    });
-
-    testWidgets('输入无效数据时显示错误信息', (WidgetTester tester) async {
-      // Arrange
-      final error = AppError.validation('身高或体重无效');
-      when(mockRepository.calculateBMI(any, any))
-          .thenAnswer((_) async => Result.failure(error));
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            bmiRepositoryProvider.overrideWithValue(mockRepository),
-          ],
-          child: MaterialApp(
-            home: BMIPage(),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Act
-      await tester.enterText(find.byType(TextField).first, '0');
-      await tester.enterText(find.byType(TextField).last, '70');
-      await tester.tap(find.text('计算BMI'));
-      await tester.pumpAndSettle();
-
-      // Assert
-      expect(find.text('身高或体重无效'), findsOneWidget);
-      expect(find.text('请检查输入数据'), findsOneWidget);
-    });
-  });
-}
+  // 6. 验证 API 调用
+  verify(mockApiService.post('/workouts/track', data: anyNamed('data'))).called(1);
+  expect(find.text('训练已开始！'), findsOneWidget);
+});
 ```
 
-### 3. 营养计算器模块测试
+#### 2.2 AI 训练计划生成测试
+**测试文件**: `test/training/ai_plan_test.dart`
 
-#### 3.1 后端集成测试
+**测试用例**:
+- ✅ AI 生成训练计划
+- ✅ 表单验证
+- ✅ 生成参数传递
+- ✅ 生成结果展示
+- ✅ 保存生成的计划
 
-**测试文件**: `backend-go/internal/api/handlers/nutrition_handler_test.go`
+**API 端点**: `POST /workout/ai/generate-plan`
 
-```go
-package handlers
+### 3. 社区功能测试
 
-import (
-	"bytes"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"testing"
+#### 3.1 社区发帖/点赞/评论测试
+**测试文件**: `test/community/post_test.dart`
 
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+**测试用例**:
+- ✅ 发布训练动态
+- ✅ 发布饮食动态
+- ✅ 发布普通动态
+- ✅ 点赞动态
+- ✅ 取消点赞
+- ✅ 评论动态
+- ✅ 动态列表加载
 
-	"fittracker/backend/internal/domain/models"
-)
+**API 端点**:
+- `POST /community/posts` - 发布动态
+- `POST /community/posts/{id}/like` - 点赞
+- `DELETE /community/posts/{id}/like` - 取消点赞
+- `POST /community/posts/{id}/comments` - 评论
 
-func TestNutritionHandler_CalculateCalories(t *testing.T) {
-	t.Run("计算卡路里成功", func(t *testing.T) {
-		// Arrange
-		gin.SetMode(gin.TestMode)
-		mockNutritionService := new(MockNutritionService)
-		h := &Handlers{
-			NutritionService: mockNutritionService,
-		}
-
-		expectedCalculation := &models.CalorieCalculation{
-			UserID:          "user1",
-			Age:             25,
-			Gender:          "male",
-			Height:          175.0,
-			Weight:          70.0,
-			ActivityLevel:   "moderate",
-			BMR:             1700.0,
-			TDEE:            2380.0,
-			Goal:            "maintain",
-			TargetCalories:  2380.0,
-			Macronutrients: models.Macronutrients{
-				Protein: 119.0,
-				Carbs:   297.5,
-				Fat:     79.3,
-			},
-		}
-
-		mockNutritionService.On("CalculateCalories", mock.AnythingOfType("*models.CalorieInput")).Return(expectedCalculation, nil)
-
-		router := gin.New()
-		router.POST("/api/nutrition/calories", h.CalculateCalories)
-
-		requestBody := map[string]interface{}{
-			"age":            25,
-			"gender":         "male",
-			"height":         175.0,
-			"weight":         70.0,
-			"activity_level": "moderate",
-			"goal":           "maintain",
-		}
-
-		jsonBody, _ := json.Marshal(requestBody)
-		req, _ := http.NewRequest("POST", "/api/nutrition/calories", bytes.NewBuffer(jsonBody))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		// Act
-		router.ServeHTTP(w, req)
-
-		// Assert
-		assert.Equal(t, http.StatusOK, w.Code)
-		
-		var response map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.True(t, response["success"].(bool))
-		
-		data := response["data"].(map[string]interface{})
-		assert.Equal(t, 2380.0, data["target_calories"])
-		assert.Equal(t, 1700.0, data["bmr"])
-		assert.Equal(t, 2380.0, data["tdee"])
-		
-		mockNutritionService.AssertExpectations(t)
-	})
-
-	t.Run("参数验证失败", func(t *testing.T) {
-		// Arrange
-		gin.SetMode(gin.TestMode)
-		mockNutritionService := new(MockNutritionService)
-		h := &Handlers{
-			NutritionService: mockNutritionService,
-		}
-
-		router := gin.New()
-		router.POST("/api/nutrition/calories", h.CalculateCalories)
-
-		// 无效的请求体
-		requestBody := map[string]interface{}{
-			"age":    -1, // 无效年龄
-			"gender": "invalid",
-		}
-
-		jsonBody, _ := json.Marshal(requestBody)
-		req, _ := http.NewRequest("POST", "/api/nutrition/calories", bytes.NewBuffer(jsonBody))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		// Act
-		router.ServeHTTP(w, req)
-
-		// Assert
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		
-		var response map[string]interface{}
-		err := json.Unmarshal(w.Body.Bytes(), &response)
-		assert.NoError(t, err)
-		assert.False(t, response["success"].(bool))
-		assert.Contains(t, response["error"], "validation")
-	})
-}
-```
-
-### 4. 签到日历模块测试
-
-#### 4.1 UI自动化测试
-
-**测试文件**: `frontend/test/features/checkin/presentation/pages/checkin_ui_test.dart`
-
+**测试步骤**:
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mockito/mockito.dart';
+testWidgets('发布训练动态', (WidgetTester tester) async {
+  // 1. 模拟发布动态 API
+  when(mockApiService.post('/community/posts', data: anyNamed('data')))
+      .thenAnswer((_) async => Response(
+        data: {'data': mockPostJson},
+        statusCode: 201,
+      ));
 
-import '../../../../lib/features/checkin/data/models/checkin_models.dart';
-import '../../../../lib/features/checkin/data/repositories/checkin_repository.dart';
-import '../../../../lib/features/checkin/presentation/pages/checkin_page.dart';
+  // 2. 构建社区页面
+  await tester.pumpWidget(createTestWidget(CommunityPage()));
 
-void main() {
-  group('Checkin UI Automation Tests', () {
-    late MockCheckinRepository mockRepository;
-    late ProviderContainer container;
+  // 3. 点击浮动按钮
+  await tester.tap(find.byKey(Key('floating_action_button')));
+  await tester.pumpAndSettle();
 
-    setUp(() {
-      mockRepository = MockCheckinRepository();
-      container = ProviderContainer(
-        overrides: [
-          checkinRepositoryProvider.overrideWithValue(mockRepository),
-        ],
-      );
-    });
+  // 4. 选择发布训练
+  await tester.tap(find.text('发布训练'));
+  await tester.pumpAndSettle();
 
-    tearDown(() {
-      container.dispose();
-    });
+  // 5. 填写内容
+  await tester.enterText(find.byKey(Key('content_field')), '今天完成了胸肌训练！');
+  
+  // 6. 点击发布
+  await tester.tap(find.text('发布'));
+  await tester.pumpAndSettle();
 
-    testWidgets('签到流程UI测试', (WidgetTester tester) async {
-      // Arrange
-      final mockCheckinRecord = CheckinRecord(
-        id: '1',
-        userId: 'user1',
-        date: DateTime.now(),
-        checkinTime: DateTime.now(),
-        mood: 'happy',
-        notes: '今天感觉很好',
-        activities: ['运动'],
-        weight: 70.0,
-        steps: 8000,
-        calories: 200,
-        sleepHours: 8,
-        weather: 'sunny',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      when(mockRepository.saveCheckinRecord(any))
-          .thenAnswer((_) async => Result.success(mockCheckinRecord));
-
-      // Act
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            checkinRepositoryProvider.overrideWithValue(mockRepository),
-          ],
-          child: MaterialApp(
-            home: CheckinPage(),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // 点击签到按钮
-      await tester.tap(find.text('立即签到'));
-      await tester.pumpAndSettle();
-
-      // 选择心情
-      await tester.tap(find.text('开心'));
-      await tester.pumpAndSettle();
-
-      // 输入备注
-      await tester.enterText(find.byType(TextField), '今天完成了30分钟跑步');
-      await tester.pumpAndSettle();
-
-      // 选择活动
-      await tester.tap(find.text('运动'));
-      await tester.pumpAndSettle();
-
-      // 输入体重
-      await tester.enterText(find.byType(TextField).at(1), '70.0');
-      await tester.pumpAndSettle();
-
-      // 输入步数
-      await tester.enterText(find.byType(TextField).at(2), '8000');
-      await tester.pumpAndSettle();
-
-      // 输入睡眠时间
-      await tester.enterText(find.byType(TextField).at(3), '8');
-      await tester.pumpAndSettle();
-
-      // 选择天气
-      await tester.tap(find.text('晴天'));
-      await tester.pumpAndSettle();
-
-      // 确认签到
-      await tester.tap(find.text('确认签到'));
-      await tester.pumpAndSettle();
-
-      // Assert
-      expect(find.text('签到成功'), findsOneWidget);
-      expect(find.text('已签到'), findsOneWidget);
-      expect(find.byIcon(Icons.check_circle), findsOneWidget);
-      verify(mockRepository.saveCheckinRecord(any)).called(1);
-    });
-
-    testWidgets('连续签到奖励UI测试', (WidgetTester tester) async {
-      // Arrange
-      when(mockRepository.getStreakData())
-          .thenAnswer((_) async => Result.success(StreakData(
-            currentStreak: 7,
-            longestStreak: 15,
-            lastCheckinDate: DateTime.now(),
-            availableRewards: [
-              StreakReward(
-                id: '1',
-                name: '连续签到7天',
-                description: '连续签到7天奖励',
-                requiredDays: 7,
-                rewardType: 'badge',
-                rewardValue: '签到达人',
-                iconUrl: 'https://example.com/badge.png',
-                isClaimed: false,
-              ),
-            ],
-            claimedRewards: [],
-          )));
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            checkinRepositoryProvider.overrideWithValue(mockRepository),
-          ],
-          child: MaterialApp(
-            home: CheckinPage(),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // 切换到连续签到标签页
-      await tester.tap(find.text('连续签到'));
-      await tester.pumpAndSettle();
-
-      // Assert
-      expect(find.text('连续签到7天'), findsOneWidget);
-      expect(find.text('签到达人'), findsOneWidget);
-      expect(find.text('可领取'), findsOneWidget);
-
-      // 点击领取奖励
-      await tester.tap(find.text('领取奖励'));
-      await tester.pumpAndSettle();
-
-      // Assert
-      expect(find.text('奖励已领取'), findsOneWidget);
-    });
-  });
-}
+  // 7. 验证结果
+  verify(mockApiService.post('/community/posts', data: anyNamed('data'))).called(1);
+  expect(find.text('发布成功！'), findsOneWidget);
+});
 ```
 
-### 5. 社区互动模块测试
+#### 3.2 挑战功能测试
+**测试文件**: `test/community/challenge_test.dart`
 
-#### 5.1 端到端集成测试
+**测试用例**:
+- ✅ 获取挑战列表
+- ✅ 参与挑战
+- ✅ 挑战排行榜
+- ✅ 挑战进度更新
 
-**测试文件**: `frontend/test/features/community/presentation/pages/community_e2e_test.dart`
+**API 端点**:
+- `GET /community/challenges` - 获取挑战列表
+- `POST /community/challenges/{id}/join` - 参与挑战
 
+### 4. 消息功能测试
+
+#### 4.1 消息收发测试
+**测试文件**: `test/messages/message_test.dart`
+
+**测试用例**:
+- ✅ 获取消息列表
+- ✅ 发送消息
+- ✅ 获取通知列表
+- ✅ 标记通知已读
+- ✅ 实时消息更新
+
+**API 端点**:
+- `GET /messages` - 获取消息列表
+- `POST /messages` - 发送消息
+- `GET /notifications` - 获取通知
+- `PUT /notifications/{id}/read` - 标记已读
+
+### 5. BMI 计算测试
+
+#### 5.1 BMI 计算/记录测试
+**测试文件**: `test/bmi/bmi_test.dart`
+
+**测试用例**:
+- ✅ BMI 计算
+- ✅ 保存 BMI 记录
+- ✅ 获取 BMI 历史记录
+- ✅ BMI 统计信息
+- ✅ 数据验证
+
+**API 端点**:
+- `POST /bmi/calculate` - 计算 BMI
+- `POST /bmi/records` - 保存记录
+- `GET /bmi/records` - 获取记录
+- `GET /bmi/stats` - 获取统计
+
+**测试步骤**:
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mockito/mockito.dart';
+testWidgets('BMI 计算功能', (WidgetTester tester) async {
+  // 1. 模拟 BMI 计算 API
+  when(mockApiService.post('/bmi/calculate', data: anyNamed('data')))
+      .thenAnswer((_) async => Response(
+        data: {
+          'data': {
+            'bmi': 22.5,
+            'category': '正常',
+            'recommendation': '保持当前体重',
+            'ideal_weight_min': 60.0,
+            'ideal_weight_max': 70.0
+          }
+        },
+        statusCode: 200,
+      ));
 
-import '../../../../lib/features/community/data/models/community_models.dart';
-import '../../../../lib/features/community/data/repositories/community_repository.dart';
-import '../../../../lib/features/community/presentation/pages/community_page.dart';
+  // 2. 构建 BMI 计算页面
+  await tester.pumpWidget(createTestWidget(BMICalculatorPage()));
 
-void main() {
-  group('Community E2E Tests', () {
-    late MockCommunityRepository mockRepository;
-    late ProviderContainer container;
+  // 3. 输入身高体重
+  await tester.enterText(find.byKey(Key('height_field')), '175');
+  await tester.enterText(find.byKey(Key('weight_field')), '70');
+  await tester.enterText(find.byKey(Key('age_field')), '25');
 
-    setUp(() {
-      mockRepository = MockCommunityRepository();
-      container = ProviderContainer(
-        overrides: [
-          communityRepositoryProvider.overrideWithValue(mockRepository),
-        ],
-      );
-    });
+  // 4. 选择性别
+  await tester.tap(find.text('男'));
+  await tester.pumpAndSettle();
 
-    tearDown(() {
-      container.dispose();
-    });
+  // 5. 点击计算
+  await tester.tap(find.text('计算 BMI'));
+  await tester.pumpAndSettle();
 
-    testWidgets('完整的社区互动流程测试', (WidgetTester tester) async {
-      // Arrange
-      final mockPost = Post(
-        id: '1',
-        userId: 'user1',
-        username: 'testuser',
-        content: '今天完成了30分钟跑步！',
-        images: [],
-        videos: [],
-        postType: 'text',
-        metadata: {},
-        likesCount: 0,
-        commentsCount: 0,
-        sharesCount: 0,
-        isLiked: false,
-        tags: ['跑步', '健身'],
-        location: '北京',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+  // 6. 验证结果
+  verify(mockApiService.post('/bmi/calculate', data: anyNamed('data'))).called(1);
+  expect(find.text('BMI: 22.5'), findsOneWidget);
+  expect(find.text('正常'), findsOneWidget);
+});
+```
 
-      when(mockRepository.createPost(any))
-          .thenAnswer((_) async => Result.success(mockPost));
-      when(mockRepository.likePost(any))
-          .thenAnswer((_) async => Result.success(null));
-      when(mockRepository.addComment(any, any))
-          .thenAnswer((_) async => Result.success(null));
+## 🔧 集成测试
 
-      // Act
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            communityRepositoryProvider.overrideWithValue(mockRepository),
-          ],
-          child: MaterialApp(
-            home: CommunityPage(),
-          ),
-        ),
-      );
+### 1. 端到端用户流程测试
 
-      await tester.pumpAndSettle();
+#### 1.1 完整用户注册到使用流程
+**测试文件**: `test/integration/user_flow_test.dart`
 
-      // 点击发布动态按钮
-      await tester.tap(find.byIcon(Icons.add));
-      await tester.pumpAndSettle();
+**测试场景**:
+1. 用户注册
+2. 用户登录
+3. 查看今日训练计划
+4. 开始训练
+5. 完成训练
+6. 发布训练动态
+7. 查看社区动态
+8. 计算 BMI
+9. 查看个人资料
 
-      // 输入动态内容
-      await tester.enterText(find.byType(TextField), '今天完成了30分钟跑步！');
-      await tester.pumpAndSettle();
+#### 1.2 社区互动流程测试
+**测试文件**: `test/integration/community_flow_test.dart`
 
-      // 添加标签
-      await tester.tap(find.text('添加标签'));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).last, '跑步');
-      await tester.tap(find.text('确定'));
-      await tester.pumpAndSettle();
+**测试场景**:
+1. 浏览社区动态
+2. 点赞动态
+3. 评论动态
+4. 发布自己的动态
+5. 参与挑战
+6. 查看挑战排行榜
 
-      // 选择位置
-      await tester.tap(find.text('选择位置'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('北京'));
-      await tester.pumpAndSettle();
+### 2. API 集成测试
 
-      // 发布动态
-      await tester.tap(find.text('发布'));
-      await tester.pumpAndSettle();
+#### 2.1 网络错误处理测试
+**测试文件**: `test/integration/network_error_test.dart`
 
-      // Assert
-      expect(find.text('发布成功'), findsOneWidget);
-      expect(find.text('今天完成了30分钟跑步！'), findsOneWidget);
-      verify(mockRepository.createPost(any)).called(1);
+**测试场景**:
+- 网络连接失败
+- 服务器错误 (500)
+- 认证失败 (401)
+- 请求超时
+- 数据解析错误
 
-      // 点赞动态
-      await tester.tap(find.byIcon(Icons.favorite_border));
-      await tester.pumpAndSettle();
+#### 2.2 状态管理测试
+**测试文件**: `test/integration/state_management_test.dart`
 
-      // Assert
-      expect(find.byIcon(Icons.favorite), findsOneWidget);
-      verify(mockRepository.likePost('1')).called(1);
+**测试场景**:
+- Provider 状态更新
+- 状态持久化
+- 状态重置
+- 多 Provider 协作
 
-      // 添加评论
-      await tester.tap(find.byIcon(Icons.comment));
-      await tester.pumpAndSettle();
+## 📊 性能测试
 
-      await tester.enterText(find.byType(TextField), '太棒了！');
-      await tester.tap(find.text('发送'));
-      await tester.pumpAndSettle();
+### 1. 加载性能测试
+**测试文件**: `test/performance/loading_test.dart`
 
-      // Assert
-      expect(find.text('太棒了！'), findsOneWidget);
-      verify(mockRepository.addComment('1', '太棒了！')).called(1);
-    });
+**测试指标**:
+- 页面加载时间
+- API 响应时间
+- 内存使用情况
+- 电池消耗
 
-    testWidgets('关注用户流程测试', (WidgetTester tester) async {
-      // Arrange
-      when(mockRepository.getRecommendedUsers())
-          .thenAnswer((_) async => Result.success([
-            User(
-              id: '2',
-              username: 'fitness_guru',
-              email: 'guru@example.com',
-              avatarUrl: 'https://example.com/avatar.jpg',
-              bio: '健身达人',
-              followersCount: 1000,
-              followingCount: 100,
-              postsCount: 50,
-              isFollowing: false,
-              isVerified: true,
-              level: 'expert',
-              totalPoints: 5000,
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            ),
-          ]));
-      when(mockRepository.followUser(any))
-          .thenAnswer((_) async => Result.success(null));
+### 2. 并发测试
+**测试文件**: `test/performance/concurrent_test.dart`
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            communityRepositoryProvider.overrideWithValue(mockRepository),
-          ],
-          child: MaterialApp(
-            home: CommunityPage(),
-          ),
-        ),
-      );
+**测试场景**:
+- 多个 API 同时调用
+- 大量数据加载
+- 频繁状态更新
 
-      await tester.pumpAndSettle();
+## 🛠️ 测试工具和配置
 
-      // 切换到关注标签页
-      await tester.tap(find.text('关注'));
-      await tester.pumpAndSettle();
+### 1. 测试依赖
+```yaml
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mockito: ^5.4.2
+  build_runner: ^2.4.7
+  http: ^1.1.0
+  integration_test:
+    sdk: flutter
+```
 
-      // Assert
-      expect(find.text('fitness_guru'), findsOneWidget);
-      expect(find.text('健身达人'), findsOneWidget);
-      expect(find.text('1000 关注者'), findsOneWidget);
+### 2. Mock 服务配置
+```dart
+// test/mocks/mock_api_service.dart
+@GenerateMocks([ApiService])
+void main() {}
 
-      // 点击关注按钮
-      await tester.tap(find.text('关注'));
-      await tester.pumpAndSettle();
+// 使用 Mockito 生成 Mock 类
+// flutter packages pub run build_runner build
+```
 
-      // Assert
-      expect(find.text('已关注'), findsOneWidget);
-      verify(mockRepository.followUser('2')).called(1);
-    });
-  });
+### 3. 测试数据
+```dart
+// test/fixtures/test_data.dart
+class TestData {
+  static const Map<String, dynamic> mockUserJson = {
+    'id': 1,
+    'username': 'testuser',
+    'email': 'test@example.com',
+    'first_name': 'Test',
+    'last_name': 'User',
+    'avatar': null,
+    'bio': null,
+    'created_at': '2024-01-01T00:00:00Z',
+    'updated_at': '2024-01-01T00:00:00Z',
+  };
+
+  static const Map<String, dynamic> mockWorkoutJson = {
+    'id': 1,
+    'name': '胸肌训练',
+    'type': '力量训练',
+    'duration': 45,
+    'calories': 350,
+    'difficulty': '中等',
+    'notes': null,
+    'rating': 4.5,
+    'created_at': '2024-01-01T10:30:00Z',
+    'exercises': [],
+  };
 }
 ```
 
-## 📊 测试覆盖率分析
+## 📈 测试覆盖率目标
 
-### 覆盖率目标
-- **前端测试覆盖率**: > 90%
-- **后端测试覆盖率**: > 85%
-- **集成测试覆盖率**: > 80%
+- **单元测试覆盖率**: ≥ 80%
+- **集成测试覆盖率**: ≥ 70%
+- **API 调用覆盖率**: 100%
+- **关键用户流程覆盖率**: 100%
 
-### 覆盖率报告生成
+## 🚀 测试执行
 
-**前端覆盖率命令**:
+### 1. 运行所有测试
 ```bash
-cd frontend
+flutter test
+```
+
+### 2. 运行特定测试
+```bash
+# 运行认证测试
+flutter test test/auth/
+
+# 运行训练功能测试
+flutter test test/training/
+
+# 运行社区功能测试
+flutter test test/community/
+```
+
+### 3. 生成测试覆盖率报告
+```bash
 flutter test --coverage
 genhtml coverage/lcov.info -o coverage/html
 ```
 
-**后端覆盖率命令**:
+### 4. 运行集成测试
 ```bash
-cd backend-go
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out -o coverage.html
+flutter test integration_test/
 ```
 
-## 🚀 测试执行脚本
+## 📝 测试报告
 
-**测试执行脚本**: `scripts/run_tests.sh`
+### 1. 测试结果格式
+- 测试用例总数
+- 通过/失败数量
+- 覆盖率百分比
+- 性能指标
+- 错误日志
 
-```bash
-#!/bin/bash
+### 2. 持续集成
+- GitHub Actions 自动测试
+- 测试失败时阻止合并
+- 定期生成测试报告
 
-echo "🧪 开始执行FitTracker全栈测试..."
+## 🔍 测试验证清单
 
-# 设置环境变量
-export FLUTTER_TEST=true
-export GO_TEST=true
+### API 调用验证
+- [ ] 所有 API 端点正确映射
+- [ ] 请求参数格式正确
+- [ ] 响应数据正确解析
+- [ ] 错误状态码处理
+- [ ] Token 自动添加
 
-# 前端测试
-echo "📱 执行前端测试..."
-cd frontend
-flutter test --coverage
-if [ $? -ne 0 ]; then
-    echo "❌ 前端测试失败"
-    exit 1
-fi
-echo "✅ 前端测试通过"
+### 状态管理验证
+- [ ] Provider 状态正确更新
+- [ ] 状态变化触发 UI 重建
+- [ ] 状态持久化工作正常
+- [ ] 多 Provider 协作正常
 
-# 后端测试
-echo "🔧 执行后端测试..."
-cd ../backend-go
-go test -v -race -coverprofile=coverage.out ./...
-if [ $? -ne 0 ]; then
-    echo "❌ 后端测试失败"
-    exit 1
-fi
-echo "✅ 后端测试通过"
+### UI 交互验证
+- [ ] 按钮点击触发正确 API
+- [ ] 表单提交数据正确
+- [ ] 加载状态显示正确
+- [ ] 错误提示显示正确
+- [ ] 成功反馈显示正确
 
-# 集成测试
-echo "🔗 执行集成测试..."
-go test -tags=integration -v ./...
-if [ $? -ne 0 ]; then
-    echo "❌ 集成测试失败"
-    exit 1
-fi
-echo "✅ 集成测试通过"
+### 数据流验证
+- [ ] API 响应 → 模型转换
+- [ ] 模型数据 → Provider 状态
+- [ ] Provider 状态 → UI 显示
+- [ ] 用户操作 → API 调用
 
-# 生成覆盖率报告
-echo "📊 生成覆盖率报告..."
-go tool cover -html=coverage.out -o coverage.html
-echo "✅ 覆盖率报告生成完成"
+## 📋 测试维护
 
-echo "🎉 所有测试执行完成！"
-```
+### 1. 测试数据更新
+- 定期更新 Mock 数据
+- 保持与 API 响应格式同步
+- 添加新的测试场景
 
-## 📝 Commit 信息示例
+### 2. 测试用例维护
+- 新增功能时添加对应测试
+- 修复 Bug 时添加回归测试
+- 定期审查和优化测试用例
 
-```bash
-# 添加测试文件
-git add frontend/test/
-git add backend-go/*_test.go
+### 3. 测试环境管理
+- 开发环境测试配置
+- 测试环境数据准备
+- 生产环境测试验证
 
-# 提交测试代码
-git commit -m "test: 添加FitTracker全栈测试用例
+---
 
-- 添加健身中心模块单元测试和集成测试
-- 添加BMI计算器模块UI自动化测试
-- 添加营养计算器模块API测试
-- 添加签到日历模块端到端测试
-- 添加社区互动模块完整流程测试
-- 实现85%以上测试覆盖率目标
-- 添加测试执行脚本和覆盖率报告生成
+## 📞 测试支持
 
-测试覆盖:
-- 前端: Widget测试、页面测试、状态管理测试
-- 后端: API测试、服务测试、数据库操作测试
-- 集成: 前后端交互测试、数据流测试
-- UI自动化: 用户操作测试、动画效果测试
+如有测试相关问题，请联系：
+- **测试负责人**: FitTracker 开发团队
+- **测试文档**: 项目内 `test/` 目录
+- **测试工具**: Flutter Test + Mockito
+- **问题反馈**: GitHub Issues
 
-Closes #123"
-```
+---
 
-## 🎯 测试验证清单
-
-### 功能验证
-- [ ] 健身中心：训练计划生成、动作指导、进度跟踪
-- [ ] BMI计算器：指标计算、健康评估、历史记录
-- [ ] 营养计算器：卡路里计算、营养分析、食物搜索
-- [ ] 签到日历：打卡功能、连续天数、奖励系统
-- [ ] 社区互动：动态发布、点赞评论、关注系统
-
-### 异常场景验证
-- [ ] 网络连接失败
-- [ ] 服务器错误响应
-- [ ] 数据为空或无效
-- [ ] 用户输入非法数据
-- [ ] 权限不足或认证失败
-
-### 性能验证
-- [ ] 页面加载时间 < 2秒
-- [ ] API响应时间 < 500ms
-- [ ] 内存使用合理
-- [ ] 电池消耗正常
-
-这个完整的测试计划确保了FitTracker应用的所有核心功能都经过充分测试，为项目的稳定性和可靠性提供了强有力的保障。
+*测试计划最后更新: 2024年12月*
+*版本: v1.0.0*
+*维护者: FitTracker 测试团队*

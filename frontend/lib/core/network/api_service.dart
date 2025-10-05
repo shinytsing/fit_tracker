@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -11,7 +12,7 @@ class ApiService {
 
   void init() {
     _dio = Dio(BaseOptions(
-      baseUrl: 'http://10.0.2.2:8080/api/v1',
+      baseUrl: 'http://localhost:8080/api/v1',
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
@@ -143,6 +144,165 @@ class ApiService {
     }
   }
 
+  // 用户注册
+  Future<Map<String, dynamic>> register({
+    required String username,
+    required String email,
+    String? phone,
+    required String password,
+    required String nickname,
+  }) async {
+    final response = await post('/users/register', data: {
+      'username': username,
+      'email': email,
+      if (phone != null) 'phone': phone,
+      'password': password,
+      'nickname': nickname,
+    });
+    
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 用户登录
+  Future<Map<String, dynamic>> login({
+    required String username,
+    required String password,
+  }) async {
+    final response = await post('/users/login', data: {
+      'username': username,
+      'password': password,
+    });
+    
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 获取用户资料
+  Future<Map<String, dynamic>?> getProfile() async {
+    try {
+      final response = await get('/users/profile');
+      return response.data as Map<String, dynamic>?;
+    } catch (e) {
+      // 如果获取资料失败，返回null
+      return null;
+    }
+  }
+
+  // 创建用户个人资料
+  Future<Map<String, dynamic>> createUserProfile({
+    required double height,
+    required double weight,
+    required int exerciseYears,
+    required String fitnessGoal,
+  }) async {
+    final response = await post('/users/profile/data', data: {
+      'height': height,
+      'weight': weight,
+      'exercise_years': exerciseYears,
+      'fitness_goal': fitnessGoal,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 获取用户个人资料
+  Future<Map<String, dynamic>> getUserProfile() async {
+    final response = await get('/users/profile/data');
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 更新用户个人资料
+  Future<Map<String, dynamic>> updateUserProfile({
+    double? height,
+    double? weight,
+    int? exerciseYears,
+    String? fitnessGoal,
+  }) async {
+    final data = <String, dynamic>{};
+    if (height != null) data['height'] = height;
+    if (weight != null) data['weight'] = weight;
+    if (exerciseYears != null) data['exercise_years'] = exerciseYears;
+    if (fitnessGoal != null) data['fitness_goal'] = fitnessGoal;
+
+    final response = await put('/users/profile/data', data: data);
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 检查用户个人资料是否存在
+  Future<Map<String, dynamic>> checkUserProfileExists() async {
+    final response = await get('/users/profile/data/exists');
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 获取训练计划列表
+  Future<Map<String, dynamic>> getTrainingPlans() async {
+    final response = await get('/training/plans');
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 获取搭子团队列表
+  Future<Map<String, dynamic>> getTeams() async {
+    final response = await get('/teams');
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 创建搭子团队
+  Future<Map<String, dynamic>> createTeam({
+    required String name,
+    required String description,
+    required int maxMembers,
+    required String location,
+    required List<String> tags,
+    bool isPublic = true,
+  }) async {
+    final response = await post('/teams', data: {
+      'name': name,
+      'description': description,
+      'max_members': maxMembers,
+      'location': location,
+      'tags': tags,
+      'is_public': isPublic,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 获取聊天列表
+  Future<Map<String, dynamic>> getChats() async {
+    final response = await get('/messages/chats');
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 创建聊天
+  Future<Map<String, dynamic>> createChat({
+    required String userId,
+    required String message,
+  }) async {
+    final response = await post('/messages/chats', data: {
+      'user_id': userId,
+      'message': message,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 发送消息
+  Future<Map<String, dynamic>> sendMessage({
+    required String chatId,
+    required String content,
+    String? type,
+    String? thumbnailUrl,
+  }) async {
+    final response = await post('/messages/chats/$chatId/messages', data: {
+      'content': content,
+      if (type != null) 'type': type,
+      if (thumbnailUrl != null) 'thumbnail_url': thumbnailUrl,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  // 获取通知
+  Future<Map<String, dynamic>> getNotifications() async {
+    final response = await get('/messages/notifications');
+    return response.data as Map<String, dynamic>;
+  }
+
   // 处理错误
   Exception _handleError(DioException error) {
     switch (error.type) {
@@ -163,3 +323,10 @@ class ApiService {
     }
   }
 }
+
+// Provider for dependency injection
+final apiServiceProvider = Provider<ApiService>((ref) {
+  final apiService = ApiService();
+  apiService.init();
+  return apiService;
+});

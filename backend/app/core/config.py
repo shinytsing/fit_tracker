@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     
     # 数据库配置
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/fittracker"
+    DATABASE_URL: str = "postgresql://fittracker:@localhost:5432/fittracker"
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
     

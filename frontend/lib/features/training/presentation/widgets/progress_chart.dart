@@ -386,6 +386,11 @@ class LineChartPainter extends CustomPainter {
     final minValue = 0.0;
     final valueRange = maxValue - minValue;
     
+    // 防止除零和NaN值
+    if (valueRange == 0 || valueRange.isNaN || valueRange.isInfinite) {
+      return;
+    }
+    
     // 绘制路径
     final path = Path();
     final fillPath = Path();
@@ -393,6 +398,11 @@ class LineChartPainter extends CustomPainter {
     for (int i = 0; i < data.length; i++) {
       final x = (i / (data.length - 1)) * size.width;
       final y = size.height - ((data[i].value - minValue) / valueRange) * size.height;
+      
+      // 检查坐标是否为有效值
+      if (x.isNaN || y.isNaN || x.isInfinite || y.isInfinite) {
+        continue;
+      }
       
       if (i == 0) {
         path.moveTo(x, y);

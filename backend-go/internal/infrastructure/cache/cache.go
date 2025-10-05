@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"fittracker/internal/config"
+	"gymates/internal/config"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -19,7 +19,11 @@ type RedisClient struct {
 
 // NewRedisClient 创建Redis客户端
 func NewRedisClient(cfg *config.Config) (*RedisClient, error) {
-	opt, err := redis.ParseURL(cfg.RedisURL)
+	// 构建Redis URL
+	redisURL := fmt.Sprintf("redis://%s:%s@%s:%s/%d", 
+		cfg.Redis.Password, "", cfg.Redis.Host, cfg.Redis.Port, cfg.Redis.DB)
+	
+	opt, err := redis.ParseURL(redisURL)
 	if err != nil {
 		return nil, fmt.Errorf("解析Redis URL失败: %w", err)
 	}
